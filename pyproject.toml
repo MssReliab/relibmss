@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "relibmss"
-version = "0.9.0"
+version = "0.10.0"
 authors = [{ name = "Hiroyuki Okamura", email = "okamu@hiroshima-u.ac.jp" }]
 description = "A Python package for binary/multi state systems"
 readme = "README.md"

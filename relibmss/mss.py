@@ -3,6 +3,7 @@ import relibmss as ms
 
 from relibmss.mdd import MddNode
 from relibmss._rpn import to_rpn as _to_rpn
+from relibmss._eval import evaluate as _evaluate
 
 class _Expression:
     def __init__(self, value):
@@ -76,10 +77,34 @@ class _Case:
         self.cond = cond
         self.then = then
 
+# Operator dispatch, built once. The operator is identified positionally (last slot of
+# the expression tuple), so a *variable* named 'min' can never be mistaken for the
+# min operator — which used to panic the Rust RPN parser.
+_MSS_OPS = {
+    '+': lambda ctx, a: a[0] + a[1],
+    '-': lambda ctx, a: a[0] - a[1],
+    '*': lambda ctx, a: a[0] * a[1],
+    '/': lambda ctx, a: a[0] / a[1],
+    '==': lambda ctx, a: a[0] == a[1],
+    '!=': lambda ctx, a: a[0] != a[1],
+    '<': lambda ctx, a: a[0] < a[1],
+    '<=': lambda ctx, a: a[0] <= a[1],
+    '>': lambda ctx, a: a[0] > a[1],
+    '>=': lambda ctx, a: a[0] >= a[1],
+    '&&': lambda ctx, a: ctx.mdd.And([a[0], a[1]]),
+    '||': lambda ctx, a: ctx.mdd.Or([a[0], a[1]]),
+    '!': lambda ctx, a: ctx.mdd.Not(a[0]),
+    'min': lambda ctx, a: ctx.mdd.Min([a[0], a[1]]),
+    'max': lambda ctx, a: ctx.mdd.Max([a[0], a[1]]),
+    '?': lambda ctx, a: a[0].ifelse(a[1], a[2]),
+}
+
+
 class Context:
     def __init__(self, vars=None):
         self.vars = {}
         self.mdd = ms.MDD()
+        self._varnodes = {}
         for varname, domain in (vars or []):
             self.vars[varname] = domain
             self.mdd.defvar(varname, domain)
@@ -88,14 +113,61 @@ class Context:
         self.vars[name] = domain
         return _Expression(name)
 
+    def get_varorder(self):
+        return self.mdd.get_varorder()
+
+    def set_varorder(self, order: list):
+        """Fix the variable order before any MDD variable is created.
+
+        `defvar` only records a name and its domain; the MDD variable itself is created
+        lazily when the expression is first converted (`getmdd`), in order of first
+        appearance. Call this beforehand to pin the order explicitly:
+
+            X, Y, Z = mss.defvar('X', 3), mss.defvar('Y', 3), mss.defvar('Z', 3)
+            mss.set_varorder(['Z', 'Y', 'X'])
+            top = mss.getmdd(mss.Min([X, Y, Z]))    # level order is Z, Y, X
+
+        Variables left out keep being created on first appearance, after these.
+        """
+        existing = self.mdd.get_varorder()
+        if existing:
+            raise ValueError(
+                "variable order is already fixed ({}); set_varorder must be called "
+                "before any MDD variable is created".format(existing))
+        unknown = [name for name in order if name not in self.vars]
+        if unknown:
+            raise ValueError("undeclared variable(s): {}".format(unknown))
+        for name in order:
+            self.mdd.defvar(name, self.vars[name])
+
     def __str__(self):
         return str(self.vars)
-    
+
+    def _leaf(self, value):
+        # Classify by Python type: a str is a variable name, bool/int are constants.
+        if isinstance(value, str):
+            node = self._varnodes.get(value)
+            if node is None:
+                if value not in self.vars:
+                    raise ValueError("unknown variable: {}".format(value))
+                node = self.mdd.defvar(value, self.vars[value])   # idempotent
+                self._varnodes[value] = node
+            return node
+        if isinstance(value, (bool, int)):
+            return self.mdd.const(value)
+        raise ValueError("invalid leaf value: {!r}".format(value))
+
+    def _apply(self, op, args):
+        try:
+            fn = _MSS_OPS[op]
+        except KeyError:
+            raise ValueError("unknown operator: {!r}".format(op))
+        return fn(self, args)
+
     def getmdd(self, arg: _Expression):
         if not isinstance(arg, _Expression):
             arg = _Expression(arg)
-        rpn = arg.to_rpn()
-        return self.mdd.rpn(rpn, self.vars)
+        return _evaluate(arg, self._leaf, self._apply)
     
     def const(self, value):
         return _Expression(value)

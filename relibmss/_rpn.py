@@ -1,13 +1,23 @@
-"""Shared Reverse Polish Notation (RPN) serialization for expression trees.
+"""Reverse Polish Notation (RPN) serialization for expression trees.
 
-Both :mod:`relibmss.bss` and :mod:`relibmss.mss` build in-memory expression trees
-of ``_Expression`` objects and flatten them into a whitespace-separated RPN string
-that is the actual interface to the Rust extension.
+.. warning::
+
+   This is **no longer how ``Context`` (BSS/MSS) builds decision diagrams** — see
+   :mod:`relibmss._eval`, which walks the expression tree and calls the node API
+   directly. The RPN string is kept for debugging (it is a readable dump of an
+   expression) and because the Rust engine documents ``rpn()`` as an entry point.
+
+   Prefer ``Context.getbdd`` / ``getmdd`` over ``BDD.rpn`` / ``MDD.rpn``. The string
+   form is lossy and unsafe: everything is stringified, and the Rust parser treats any
+   token it does not recognize as a *variable name*. So a variable named ``True`` or
+   ``0`` silently becomes a constant (wrong probability, no error), a name containing
+   whitespace splits into two variables, and a name like ``&`` or ``min`` can panic the
+   parser. The evaluator has none of these problems because it dispatches on the
+   operator's position in the tuple and on each leaf's Python type.
 
 The traversal uses a ``save(id)`` / ``load(id)`` scheme keyed on ``id(node)`` so that
 shared subexpressions (a DAG, not just a tree) are emitted once and referenced
-afterwards. This module is the single source of truth for that scheme; keep both
-``Context`` layers importing it rather than duplicating the logic.
+afterwards, and only for nodes that are actually shared.
 """
 
 

@@ -87,6 +87,55 @@ print(bss.getbdd(bss.Not(A)).prob(prob)) # 0.9
 print(bss.getbdd(A ^ B).prob(prob))      # 0.1*0.8 + 0.9*0.2 = 0.26
 ```
 
+### Variable order
+
+The variable order determines the size of the BDD/MDD, so it can matter a lot for large
+models. `defvar` only declares a variable; the diagram variable itself is created when the
+expression is first converted (`getbdd`/`getmdd`), **in order of first appearance in the
+expression**. Variables that never appear are not created at all.
+
+```python
+import relibmss as ms
+
+bss = ms.BSS()
+A = bss.defvar('A')
+B = bss.defvar('B')
+C = bss.defvar('C')
+
+# Default: first appearance wins, not declaration order
+bss.getbdd(C & A | B)
+print(bss.get_varorder())   # ['C', 'A', 'B']
+```
+
+Use `set_varorder` to pin the order explicitly. It must be called **before** the first
+`getbdd`/`getmdd`, because the order is fixed once the variables are created (there is no
+dynamic reordering); calling it afterwards raises an error. Variables you leave out are
+still created on first appearance, after the ones you listed.
+
+```python
+bss = ms.BSS()
+A = bss.defvar('A')
+B = bss.defvar('B')
+C = bss.defvar('C')
+
+bss.set_varorder(['C', 'B', 'A'])
+bss.getbdd(A & B | C)
+print(bss.get_varorder())   # ['C', 'B', 'A']
+```
+
+Passing `vars=[...]` to the constructor does the same thing: `ms.BSS(vars=['C', 'B', 'A'])`.
+
+`get_varorder` also lets you carry an order over to another manager. Note the two differ,
+because MDD variables need their number of states:
+
+```python
+bss.get_varorder()   # ['C', 'B', 'A']            -- BSS/BDD: names
+mss.get_varorder()   # [('C', 3), ('B', 3), ('A', 2)] -- MSS/MDD: (name, states)
+
+bdd = ms.BDD(bss.get_varorder())   # reuse the order in a raw BDD
+mdd = ms.MDD(mss.get_varorder())   # likewise for an MDD
+```
+
 ### Obtain the minimal cut sets
 
 ```python
@@ -587,15 +636,15 @@ def gate2(mss, x, y):
         mss.case(then=y)
     ])
 
-mss = ms.MSS(vars=[("C", 3), ("B", 3), ("A", 2)])
+mss = ms.MSS()
 
 A = mss.defvar('A', 2)
 B = mss.defvar('B', 3)
 C = mss.defvar('C', 3)
 
-# Define the order of variables
-# this should be done before making MDD
-# mss.set_varorder({"A": 2, "B": 1, "C": 0})
+# Define the order of variables -- see "Variable order" above for the details.
+# This must be done before making the MDD.
+mss.set_varorder(["C", "B", "A"])
 
 sx = gate1(mss, B, C)
 ss = gate2(mss, A, sx)

@@ -15,15 +15,17 @@ def gate2(mss, x, y):
         mss.case(then=y)
     ])
 
-mss = ms.MSS(vars=[("C", 3), ("B", 3), ("A", 2)])
+mss = ms.MSS()
 
 A = mss.defvar('A', 2)
 B = mss.defvar('B', 3)
 C = mss.defvar('C', 3)
 
-# Define the order of variables
-# this should be done before making MDD
-# mss.set_varorder({"A": 2, "B": 1, "C": 0})
+# Define the order of variables. This must be done before making the MDD: variables are
+# created when the expression is first converted, and the order is fixed at that point.
+# Without this call they are created in order of first appearance in the expression.
+# Passing vars=[("C", 3), ("B", 3), ("A", 2)] to MSS() fixes the order the same way.
+mss.set_varorder(["C", "B", "A"])
 
 sx = gate1(mss, B, C)
 ss = gate2(mss, A, sx)

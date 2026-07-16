@@ -1,6 +1,8 @@
 import math
 import subprocess
 
+import pytest
+
 import relibmss as ms
 
 
@@ -9,6 +11,191 @@ PROB = {"A": 0.1, "B": 0.2, "C": 0.3}
 
 def _close(a, b):
     return math.isclose(a, b, rel_tol=1e-9, abs_tol=1e-12)
+
+
+# --- Characterization tests: variable ordering -------------------------------
+# These pin the CURRENT ordering rules so the RPN-string bridge can be replaced by a
+# direct node-API evaluator without changing DD size / get_varorder() for existing users.
+# Rules: variables are created lazily in order of FIRST APPEARANCE in the expression tree
+# (not declaration order); variables that never appear are not created; variables
+# pre-declared via Context(vars=[...]) are created first, in list order.
+
+
+def test_varorder_is_first_appearance_not_declaration():
+    bss = ms.BSS()
+    A = bss.defvar("A")
+    B = bss.defvar("B")
+    C = bss.defvar("C")
+    bss.getbdd(C & A | B)
+    assert bss.get_varorder() == ["C", "A", "B"]
+
+
+def test_varorder_omits_unused_variables():
+    bss = ms.BSS()
+    A = bss.defvar("A")
+    B = bss.defvar("B")
+    C = bss.defvar("C")
+    bss.getbdd(B)
+    assert bss.get_varorder() == ["B"]
+
+
+def test_varorder_kofn_and_ifelse():
+    bss = ms.BSS()
+    C = bss.defvar("C")
+    A = bss.defvar("A")
+    B = bss.defvar("B")
+    bss.getbdd(bss.kofn(2, [C, A, B]))
+    assert bss.get_varorder() == ["C", "A", "B"]
+
+    bss2 = ms.BSS()
+    C2 = bss2.defvar("C")
+    A2 = bss2.defvar("A")
+    B2 = bss2.defvar("B")
+    bss2.getbdd(bss2.ifelse(C2, A2, B2))
+    assert bss2.get_varorder() == ["C", "A", "B"]
+
+
+def test_varorder_with_shared_subexpression():
+    bss = ms.BSS()
+    A = bss.defvar("A")
+    B = bss.defvar("B")
+    C = bss.defvar("C")
+    sub = C & A
+    bss.getbdd(sub | (sub & B))
+    assert bss.get_varorder() == ["C", "A", "B"]
+
+
+def test_varorder_predeclared_wins():
+    bss = ms.BSS(vars=["X", "Y", "Z"])
+    Z = bss.defvar("Z")
+    X = bss.defvar("X")
+    bss.getbdd(Z & X)
+    assert bss.get_varorder() == ["X", "Y", "Z"]
+
+
+def test_varorder_partial_predeclaration():
+    bss = ms.BSS(vars=["B"])
+    A = bss.defvar("A")
+    B = bss.defvar("B")
+    C = bss.defvar("C")
+    bss.getbdd(C & A | B)
+    # pre-declared first, the rest by first appearance
+    assert bss.get_varorder() == ["B", "C", "A"]
+
+
+def test_varorder_predeclared_unused_is_kept():
+    bss = ms.BSS(vars=["P", "Q"])
+    P = bss.defvar("P")
+    bss.getbdd(P)
+    assert bss.get_varorder() == ["P", "Q"]
+
+
+def test_varorder_mss_first_appearance():
+    mss = ms.MSS()
+    X = mss.defvar("X", 3)
+    Y = mss.defvar("Y", 3)
+    Z = mss.defvar("Z", 3)
+    mss.getmdd(mss.Min([Z, X]))
+    # MDD.get_varorder() yields (name, domain) pairs; Y never appears so it is not created.
+    assert mss.mdd.get_varorder() == [("Z", 3), ("X", 3)]
+
+
+def test_set_varorder_pins_order():
+    bss = ms.BSS()
+    A = bss.defvar("A")
+    B = bss.defvar("B")
+    C = bss.defvar("C")
+    bss.set_varorder(["C", "B", "A"])
+    bss.getbdd(A & B | C)
+    assert bss.get_varorder() == ["C", "B", "A"]
+
+    mss = ms.MSS()
+    X = mss.defvar("X", 3)
+    Y = mss.defvar("Y", 3)
+    Z = mss.defvar("Z", 3)
+    mss.set_varorder(["Z", "Y", "X"])
+    mss.getmdd(mss.Min([X, Y, Z]))
+    assert [n for n, _ in mss.get_varorder()] == ["Z", "Y", "X"]
+
+
+def test_set_varorder_partial_then_first_appearance():
+    bss = ms.BSS()
+    A = bss.defvar("A")
+    B = bss.defvar("B")
+    C = bss.defvar("C")
+    bss.set_varorder(["B"])
+    bss.getbdd(C & A | B)
+    assert bss.get_varorder() == ["B", "C", "A"]
+
+
+def test_set_varorder_rejects_bad_input():
+    bss = ms.BSS()
+    bss.defvar("A")
+    with pytest.raises(ValueError):
+        bss.set_varorder(["A", "nope"])          # undeclared
+
+    bss2 = ms.BSS()
+    A2 = bss2.defvar("A")
+    bss2.getbdd(A2)                              # variables now created
+    with pytest.raises(ValueError):
+        bss2.set_varorder(["A"])                 # too late to reorder
+
+
+# --- Variable names that the old RPN-string bridge corrupted -----------------
+# Each of these used to fail silently or panic the Rust engine, because the token
+# stream could not distinguish a variable name from an operator or a constant.
+
+
+def test_variable_named_like_a_constant():
+    # Used to stringify to the "True"/"0" constant tokens and return 1.0 / 0.0.
+    bss = ms.BSS()
+    T = bss.defvar("True")
+    assert _close(bss.getbdd(T).prob({"True": 0.5}), 0.5)
+
+    bss2 = ms.BSS()
+    Z = bss2.defvar("0")
+    X = bss2.defvar("X")
+    assert _close(bss2.getbdd(Z & X).prob({"0": 0.5, "X": 0.5}), 0.25)
+
+
+def test_variable_name_with_whitespace():
+    # Used to split into two variables on the RPN whitespace boundary.
+    bss = ms.BSS()
+    V = bss.defvar("my var")
+    assert _close(bss.getbdd(V).prob({"my var": 0.5}), 0.5)
+    assert bss.get_varorder() == ["my var"]
+
+
+def test_variable_named_like_an_operator():
+    # Used to panic the Rust RPN parser (stack underflow on the '&' / 'min' arm).
+    bss = ms.BSS()
+    amp = bss.defvar("&")
+    Y = bss.defvar("Y")
+    assert _close(bss.getbdd(amp & Y).prob({"&": 0.5, "Y": 0.5}), 0.25)
+
+    mss = ms.MSS()
+    mn = mss.defvar("min", 2)
+    W = mss.defvar("W", 2)
+    top = mss.getmdd(mss.Min([mn, W]))
+    assert _close(top.prob({"min": [0.5, 0.5], "W": [0.5, 0.5]}, [1]), 0.25)
+
+
+def test_mss_unknown_variable_raises():
+    mss = ms.MSS()
+    mss.defvar("X", 2)
+    with pytest.raises(ValueError):
+        mss.getmdd(mss.const("undeclared"))
+
+
+def test_deep_expression_does_not_hit_recursion_limit():
+    # And([...]) builds a left-leaning tree; the evaluator uses an explicit stack.
+    bss = ms.BSS()
+    xs = [bss.defvar("x%d" % i) for i in range(2000)]
+    top = bss.getbdd(bss.And(xs))
+    assert _close(top.prob({"x%d" % i: 1.0 for i in range(2000)}), 1.0)
+
+
+# -----------------------------------------------------------------------------
 
 
 def test_bss_and_or_prob():

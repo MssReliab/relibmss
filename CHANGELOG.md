@@ -1,3 +1,18 @@
+# v0.10.0
+
+- Change: `Context` (BSS/MSS) now builds decision diagrams by walking the expression tree
+  and calling the node API directly, instead of serializing it to an RPN string for Rust
+  to re-parse. The user-facing API is unchanged and the variable order is identical.
+- Bug fix: a variable named like a constant (`True`, `0`) silently became that constant
+  and returned a wrong probability with no error
+- Bug fix: a variable name containing whitespace silently split into two variables
+- Bug fix: a variable named like an operator (`&` in BSS, `min` in MSS) panicked the Rust
+  RPN parser
+- Add: `set_varorder(names)` for BSS/MSS, to fix the variable order before the diagram is
+  built (previously only possible via `Context(vars=[...])`); `MSS.get_varorder()`
+- Note: `to_rpn()` / `BDD.rpn()` / `MDD.rpn()` still exist but are only for debugging and
+  the raw Rust DSL; they retain the string-encoding hazards listed above
+
 # v0.9.0
 
 - Bug fix: `BSS.Not` emitted an invalid `!` token, which the RPN parser silently turned
