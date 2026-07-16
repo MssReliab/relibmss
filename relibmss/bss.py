@@ -1,28 +1,7 @@
 import warnings
 import relibmss as ms
 
-def _to_rpn(expr):
-    stack = [expr]
-    rpn = []
-    cache = set([])
-    while len(stack) > 0:
-        node = stack.pop()
-        idnum = str(id(node))
-        if isinstance(node, tuple) and node[0] == "save" and len(stack) > 0:
-            idnum = node[1]
-            rpn.append('save({})'.format(idnum))
-            cache.add(idnum)
-        elif isinstance(node, tuple) and node[0] == "save":
-            pass
-        elif idnum in cache:
-            rpn.append('load({})'.format(idnum))
-        elif isinstance(node.value, tuple):
-            stack.append(("save", idnum))
-            for i in range(len(node.value) - 1, -1, -1):
-                stack.append(node.value[i])
-        else:
-            rpn.append(str(node.value))
-    return ' '.join(rpn)
+from relibmss._rpn import to_rpn as _to_rpn
 
 class _Expression:
     def __init__(self, value):
@@ -38,21 +17,27 @@ class _Expression:
             other = _Expression(other)
         return _Expression((self, other, _Expression('|')))
 
-    def __str__(self):
+    def __xor__(self, other):
+        if not isinstance(other, _Expression):
+            other = _Expression(other)
+        return _Expression((self, other, _Expression('^')))
+
+    def __invert__(self):
+        return _Expression((self, _Expression('~')))
+
+    def to_rpn(self):
         if isinstance(self.value, tuple):
             return _to_rpn(self)
         return str(self.value)
 
-    def _to_rpn(self):
-        if isinstance(self.value, tuple):
-            return _to_rpn(self)
-        return str(self.value)
+    def __str__(self):
+        return self.to_rpn()
 
 class Context:
-    def __init__(self, vars=[]):
+    def __init__(self, vars=None):
         self.vars = set([])
         self.bdd = ms.BDD()
-        for varname in vars:
+        for varname in (vars or []):
             self.vars.add(varname)
             self.bdd.defvar(varname)
 
@@ -63,17 +48,13 @@ class Context:
     def get_varorder(self):
         return self.bdd.get_varorder()
 
-    # def set_varorder(self, x: list):
-    #     for varname in x:
-    #         self.bdd.defvar(varname)
-
     def __str__(self):
         return str(self.vars)
     
     def getbdd(self, arg: _Expression):
         if not isinstance(arg, _Expression):
             arg = _Expression(arg)
-        rpn = arg._to_rpn()
+        rpn = arg.to_rpn()
         return self.bdd.rpn(rpn)
     
     def const(self, value):
@@ -81,11 +62,7 @@ class Context:
 
     def And(self, args: list):
         assert len(args) > 0
-        if not isinstance(args[0], _Expression):
-            args[0] = _Expression(args[0])
-        if len(args) == 1:
-            return args[0]
-        x = args[0]
+        x = args[0] if isinstance(args[0], _Expression) else _Expression(args[0])
         for y in args[1:]:
             if not isinstance(y, _Expression):
                 y = _Expression(y)
@@ -94,11 +71,7 @@ class Context:
 
     def Or(self, args: list):
         assert len(args) > 0
-        if not isinstance(args[0], _Expression):
-            args[0] = _Expression(args[0])
-        if len(args) == 1:
-            return args[0]
-        x = args[0]
+        x = args[0] if isinstance(args[0], _Expression) else _Expression(args[0])
         for y in args[1:]:
             if not isinstance(y, _Expression):
                 y = _Expression(y)
@@ -108,7 +81,7 @@ class Context:
     def Not(self, arg: _Expression):
         if not isinstance(arg, _Expression):
             arg = _Expression(arg)
-        return _Expression((arg, _Expression('!')))
+        return _Expression((arg, _Expression('~')))
 
     def ifelse(self, condition: _Expression, then_expr: _Expression, else_expr: _Expression):
         if not isinstance(condition, _Expression):
@@ -121,32 +94,51 @@ class Context:
 
     def kofn(self, k: int, args: list):
         assert k <= len(args)
-        if k == 1:
-            return self.Or(args)
-        elif k == len(args):
-            return self.And(args)
-        else:
-            return self.ifelse(args[0], self.kofn(k-1, args[1:]), self.kofn(k, args[1:]))
+        n = len(args)
+        # Memoize on (k, i) where i is the start index into `args`, so overlapping
+        # subproblems reuse the SAME _Expression object. That lets _to_rpn's id-based
+        # sharing emit load() instead of re-expanding, turning the RPN (and the DD
+        # construction) from exponential into O(k*n). The DD produced is identical.
+        memo = {}
+        def rec(k, i):
+            m = n - i               # size of the remaining sub-array args[i:]
+            if k == 1:
+                return self.Or(args[i:])
+            if k == m:
+                return self.And(args[i:])
+            key = (k, i)
+            if key not in memo:
+                memo[key] = self.ifelse(args[i], rec(k - 1, i + 1), rec(k, i + 1))
+            return memo[key]
+        return rec(k, 0)
     
-    def prob(self, arg: _Expression, values: dict, ss = [True]):
+    def prob(self, arg: _Expression, probability: dict, values=None):
         warnings.warn("This function is obsolete. Use the method of BddNode directly.", category=DeprecationWarning)
+        if values is None:
+            values = [True]
         top = self.getbdd(arg)
-        return top.prob(values, ss)
-    
-    def bmeas(self, arg: _Expression, values: dict, ss = [True]):
-        warnings.warn("This function is obsolete. Use the method of BddNode directly.", category=DeprecationWarning)
-        top = self.getbdd(arg)
-        return top.bmeas(values, ss)
+        return top.prob(probability, values)
 
-    def prob_interval(self, arg: _Expression, values: dict, ss = [True]):
+    def bmeas(self, arg: _Expression, probability: dict, values=None):
         warnings.warn("This function is obsolete. Use the method of BddNode directly.", category=DeprecationWarning)
+        if values is None:
+            values = [True]
         top = self.getbdd(arg)
-        return top.prob_interval(values, ss)
+        return top.bmeas(probability, values)
 
-    def bmeas_interval(self, arg: _Expression, values: dict, ss = [True]):
+    def prob_interval(self, arg: _Expression, probability: dict, values=None):
         warnings.warn("This function is obsolete. Use the method of BddNode directly.", category=DeprecationWarning)
+        if values is None:
+            values = [True]
         top = self.getbdd(arg)
-        return top.bmeas_interval(values, ss)
+        return top.prob_interval(probability, values)
+
+    def bmeas_interval(self, arg: _Expression, probability: dict, values=None):
+        warnings.warn("This function is obsolete. Use the method of BddNode directly.", category=DeprecationWarning)
+        if values is None:
+            values = [True]
+        top = self.getbdd(arg)
+        return top.bmeas_interval(probability, values)
 
     def minpath(self, arg: _Expression):
         warnings.warn("This function is obsolete. Use the method of BddNode directly.", category=DeprecationWarning)

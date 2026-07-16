@@ -2,41 +2,7 @@ import warnings
 import relibmss as ms
 
 from relibmss.mdd import MddNode
-
-# def _to_rpn(expr):
-#     stack = [expr]
-#     rpn = []
-#     while len(stack) > 0:
-#         node = stack.pop()
-#         if isinstance(node.value, tuple):
-#             for i in range(len(node.value) - 1, -1, -1):
-#                 stack.append(node.value[i])
-#         else:
-#             rpn.append(str(node.value))
-#     return ' '.join(rpn)
-
-def _to_rpn(expr):
-    stack = [expr]
-    rpn = []
-    cache = set([])
-    while len(stack) > 0:
-        node = stack.pop()
-        idnum = str(id(node))
-        if isinstance(node, tuple) and node[0] == "save" and len(stack) > 0:
-            idnum = node[1]
-            rpn.append('save({})'.format(idnum))
-            cache.add(idnum)
-        elif isinstance(node, tuple) and node[0] == "save":
-            pass
-        elif idnum in cache:
-            rpn.append('load({})'.format(idnum))
-        elif isinstance(node.value, tuple):
-            stack.append(("save", idnum))
-            for i in range(len(node.value) - 1, -1, -1):
-                stack.append(node.value[i])
-        else:
-            rpn.append(str(node.value))
-    return ' '.join(rpn)
+from relibmss._rpn import to_rpn as _to_rpn
 
 class _Expression:
     def __init__(self, value):
@@ -92,15 +58,18 @@ class _Expression:
             other = _Expression(other)
         return _Expression((self, other, _Expression('>=')))
     
-    def __str__(self):
-        if isinstance(self.value, tuple):
-            return _to_rpn(self)
-        return str(self.value)
+    # `__eq__` is overloaded to build an expression (not a bool), which would set
+    # `__hash__` to None and make instances unhashable. Keep identity-based hashing
+    # so expressions remain usable as set members / dict keys.
+    __hash__ = object.__hash__
 
     def to_rpn(self):
         if isinstance(self.value, tuple):
             return _to_rpn(self)
         return str(self.value)
+
+    def __str__(self):
+        return self.to_rpn()
 
 class _Case:
     def __init__(self, cond, then):
@@ -108,21 +77,17 @@ class _Case:
         self.then = then
 
 class Context:
-    def __init__(self, vars=[]):
+    def __init__(self, vars=None):
         self.vars = {}
         self.mdd = ms.MDD()
-        for varname, domain in vars:
+        for varname, domain in (vars or []):
             self.vars[varname] = domain
             self.mdd.defvar(varname, domain)
 
     def defvar(self, name, domain):
         self.vars[name] = domain
         return _Expression(name)
-    
-    # def set_varorder(self, x: dict):
-    #     for varname in sorted(x, key=x.get):
-    #         self.mdd.defvar(varname, self.vars[varname])
-    
+
     def __str__(self):
         return str(self.vars)
     
@@ -137,11 +102,7 @@ class Context:
 
     def And(self, args: list):
         assert len(args) > 0
-        if not isinstance(args[0], _Expression):
-            args[0] = _Expression(args[0])
-        if len(args) == 1:
-            return args[0]
-        x = args[0]
+        x = args[0] if isinstance(args[0], _Expression) else _Expression(args[0])
         for y in args[1:]:
             if not isinstance(y, _Expression):
                 y = _Expression(y)
@@ -150,15 +111,29 @@ class Context:
 
     def Or(self, args: list):
         assert len(args) > 0
-        if not isinstance(args[0], _Expression):
-            args[0] = _Expression(args[0])
-        if len(args) == 1:
-            return args[0]
-        x = args[0]
+        x = args[0] if isinstance(args[0], _Expression) else _Expression(args[0])
         for y in args[1:]:
             if not isinstance(y, _Expression):
                 y = _Expression(y)
             x = _Expression((x, y, _Expression('||')))
+        return x
+
+    def Min(self, args: list):
+        assert len(args) > 0
+        x = args[0] if isinstance(args[0], _Expression) else _Expression(args[0])
+        for y in args[1:]:
+            if not isinstance(y, _Expression):
+                y = _Expression(y)
+            x = _Expression((x, y, _Expression('min')))
+        return x
+
+    def Max(self, args: list):
+        assert len(args) > 0
+        x = args[0] if isinstance(args[0], _Expression) else _Expression(args[0])
+        for y in args[1:]:
+            if not isinstance(y, _Expression):
+                y = _Expression(y)
+            x = _Expression((x, y, _Expression('max')))
         return x
 
     def Not(self, arg: _Expression):
@@ -193,15 +168,15 @@ class Context:
                 raise ValueError("The element must be a Case object")
             return self.ifelse(x.cond, x.then, self.switch(conds[1:]))
 
-    def prob(self, arg: _Expression, values: dict, sv: list):
+    def prob(self, arg: _Expression, probability: dict, values: list):
         warnings.warn("This function is obsolete. Use the method of MddNode directly.", category=DeprecationWarning)
         top = self.getmdd(arg)
-        return top.prob(values, sv)
-        
-    def prob_interval(self, arg: _Expression, values: dict, sv: list):
+        return top.prob(probability, values)
+
+    def prob_interval(self, arg: _Expression, probability: dict, values: list):
         warnings.warn("This function is obsolete. Use the method of MddNode directly.", category=DeprecationWarning)
         top = self.getmdd(arg)
-        return top.prob_interval(values, sv)
+        return top.prob_interval(probability, values)
     
     def minpath(self, arg: _Expression):
         top = self.getmdd(arg)

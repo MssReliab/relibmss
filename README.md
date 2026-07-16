@@ -66,6 +66,27 @@ print(top.prob(prob))
 print(top.prob_interval(probint))
 ```
 
+### Boolean operators
+
+In addition to `&` (AND) and `|` (OR), events support `~` (NOT) and `^` (XOR).
+
+```python
+import relibmss as ms
+
+bss = ms.BSS()
+A = bss.defvar('A')
+B = bss.defvar('B')
+
+prob = {'A': 0.1, 'B': 0.2}
+
+# NOT: `~A` and `bss.Not(A)` are equivalent
+print(bss.getbdd(~A).prob(prob))         # 0.9
+print(bss.getbdd(bss.Not(A)).prob(prob)) # 0.9
+
+# XOR: exactly one of A and B occurs
+print(bss.getbdd(A ^ B).prob(prob))      # 0.1*0.8 + 0.9*0.2 = 0.26
+```
+
 ### Obtain the minimal cut sets
 
 ```python
@@ -462,6 +483,32 @@ MSS does not have default gates. Users need to define gates by themselves. The o
     - `mss.Not`: NOT gate
     - `mss.switch`: Switch-case structure
     - `mss.case`: Case structure
+- Value operations:
+    - `mss.Min`: minimum of the given expressions (series-like structure)
+    - `mss.Max`: maximum of the given expressions (parallel-like structure)
+
+`Min`/`Max` take a list and are handy when a gate is simply the weakest or strongest of
+its inputs:
+
+```python
+import relibmss as ms
+
+mss = ms.MSS()
+X = mss.defvar('X', 3)
+Y = mss.defvar('Y', 3)
+Z = mss.defvar('Z', 3)
+
+# The system state is the worst (Min) / best (Max) of its components
+weakest = mss.Min([X, Y, Z])
+strongest = mss.Max([X, Y, Z])
+
+prob = {'X': [0.2, 0.3, 0.5], 'Y': [0.2, 0.3, 0.5], 'Z': [0.2, 0.3, 0.5]}
+
+# P(min == 0) = 1 - 0.8^3 = 0.488
+print(mss.getmdd(weakest).prob(prob, [0]))
+# P(max == 2) = 1 - 0.5^3 = 0.875
+print(mss.getmdd(strongest).prob(prob, [2]))
+```
 
 ```python
 import relibmss as ms

@@ -19,10 +19,10 @@ class _Case:
         self.then = then
 
 class BDD:
-    def __init__(self, vars=[]):
+    def __init__(self, vars=None):
         self.bdd = ms.PyBDD()
         self.vars = set([])
-        for name in vars:
+        for name in (vars or []):
             self.defvar(name)
 
     def __repr__(self):
@@ -129,6 +129,10 @@ class BddNode:
         other_node = _to_bddnode(self.bdd, other)
         return BddNode(self.bdd, self.node._xor(other_node.node))
     
+    # `__eq__` builds a BDD (not a bool), which nulls `__hash__`. Restore identity
+    # hashing so nodes stay usable as set members / dict keys.
+    __hash__ = object.__hash__
+
     def __eq__(self, other):
         other_node = _to_bddnode(self.bdd, other)
         return BddNode(self.bdd, self.node._eq(other_node.node))
@@ -145,38 +149,50 @@ class BddNode:
     def size(self):
         return self.node._size()
     
-    def count(self, values=[True], type="zdd"):
+    def count(self, values=None, type="zdd"):
+        if values is None:
+            values = [True]
         if type == "bdd":
             return self.node._bdd_count(values)
         elif type == "zdd":
             return self.node._zdd_count(values)
         else:
             raise ValueError("Invalid type")
-    
+
     def dot(self):
         return self.node._dot()
-    
-    def extract(self, values=[True], type="zdd"):
+
+    def extract(self, values=None, type="zdd"):
+        if values is None:
+            values = [True]
         if type == "bdd":
             return self.node._bdd_extract(values)
         elif type == "zdd":
             return self.node._zdd_extract(values)
         else:
             raise ValueError("Invalid type")
-    
-    def prob(self, probability, values=[True]):
+
+    def prob(self, probability, values=None):
+        if values is None:
+            values = [True]
         return self.node._prob(probability, values)
-    
-    def prob_interval(self, probability, values=[True]):
+
+    def prob_interval(self, probability, values=None):
+        if values is None:
+            values = [True]
         interval_probability = {k: ms.Interval(v[0], v[1]) for k, v in probability.items()}
         return self.node._prob_interval(interval_probability, values)
-    
+
     def minpath(self):
         return BddNode(self.bdd, self.node._minpath())
-    
-    def bmeas(self, probability, values=[True]):
+
+    def bmeas(self, probability, values=None):
+        if values is None:
+            values = [True]
         return self.node._bmeas(probability, values)
-    
-    def bmeas_interval(self, probability, values=[True]):
+
+    def bmeas_interval(self, probability, values=None):
+        if values is None:
+            values = [True]
         interval_probability = {k: ms.Interval(v[0], v[1]) for k, v in probability.items()}
         return self.node._bmeas_interval(interval_probability, values)

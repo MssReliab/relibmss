@@ -1,3 +1,18 @@
+# v0.9.0
+
+- Bug fix: `BSS.Not` emitted an invalid `!` token, which the RPN parser silently turned
+  into a variable named `!` and built a wrong BDD; it now emits `~`
+- Add: `~` (NOT) and `^` (XOR) operators for BSS expressions
+- Add: `Min` and `Max` for MSS
+- Perf: memoize `Context.kofn` so the generated RPN is polynomial instead of exponential
+- Perf: emit `save`/`load` only for shared nodes; RPN generation unified in `relibmss/_rpn.py`
+- Fix: remove mutable default arguments; restore hashability of nodes/expressions that
+  overload `__eq__`
+- Change: unify the argument names of `prob`/`prob_interval`/`bmeas` to `probability` and
+  `values`
+- Change: depend on the `relib-bss`/`relib-mss` 0.4 crates from crates.io instead of a git
+  branch
+
 # v0.8.2
 
 - add info and clear_cache for BDD/MDD

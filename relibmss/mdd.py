@@ -16,10 +16,10 @@ class _Case:
         self.then = then
 
 class MDD:
-    def __init__(self, vars=[]):
+    def __init__(self, vars=None):
         self.mdd = ms.PyMDD()
         self.vars = {}
-        for name, n in vars:
+        for name, n in (vars or []):
             self.defvar(name, n)
     
     def __repr__(self):
@@ -135,6 +135,10 @@ class MddNode:
         other_node = _to_mddnode(self.mdd, other)
         return MddNode(self.mdd, self.node._div(other_node.node))
     
+    # `__eq__` builds an MDD (not a bool), which nulls `__hash__`. Restore identity
+    # hashing so nodes stay usable as set members / dict keys.
+    __hash__ = object.__hash__
+
     def __eq__(self, other):
         other_node = _to_mddnode(self.mdd, other)
         return MddNode(self.mdd, self.node._eq(other_node.node))
