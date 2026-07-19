@@ -1,3 +1,11 @@
+# v0.11.0
+
+- Perf: upgrade the decision-diagram engine to `relib-bss`/`relib-mss` 0.5, which
+  replaces the composite `ite` (BDD, boolean MDD, and value-side MtMdd2) with native
+  single-pass recursions and adds commutative operand ordering to the apply caches.
+  Faster construction of `ifelse`/`switch`/`kofn`/`@match`-style diagrams and MSS
+  arithmetic; the user-facing Python API and all results are unchanged.
+
 # v0.10.0
 
 - Change: `Context` (BSS/MSS) now builds decision diagrams by walking the expression tree
