@@ -1,3 +1,9 @@
+# v0.11.1
+
+- Perf: upgrade the engine to `relib-bss`/`relib-mss` 0.5.1, which narrows MDD
+  node ids/children to `u32` (~28% lower peak memory on large multi-state
+  diagrams). No user-facing API change and all results are unchanged.
+
 # v0.11.0
 
 - Perf: upgrade the decision-diagram engine to `relib-bss`/`relib-mss` 0.5, which
