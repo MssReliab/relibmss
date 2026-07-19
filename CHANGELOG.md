@@ -1,3 +1,15 @@
+# v0.12.0
+
+- **abi3 (Stable ABI) wheels.** The extension now builds against pyo3's
+  `abi3-py311`, so a **single wheel per (OS, arch) works on CPython 3.11–3.14+**
+  instead of one wheel per Python minor version. This removes the per-Python
+  build matrix and the need to re-release for each new Python.
+- **Requires Python >= 3.11** (drops 3.9/3.10; those users stay on 0.11.x).
+- Upgraded pyo3 0.18 -> 0.29. No user-facing Python API change (39 tests pass on
+  3.11/3.12).
+- Wheels: Linux x86_64/aarch64, **macOS arm64** (Apple Silicon), Windows x86_64,
+  plus sdist. Intel macOS (x86_64) wheels are dropped — Intel Macs use the sdist.
+
 # v0.11.2
 
 - Packaging: the release CI now also builds **macOS wheels** (arm64 + x86_64) and

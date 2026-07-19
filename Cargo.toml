@@ -1,6 +1,6 @@
 [package]
 name = "relibmss"
-version = "0.11.2"
+version = "0.12.0"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/MssReliab/relibmss"
@@ -11,6 +11,6 @@ documentation = "https://github.com/MssReliab/relibmss"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.18.3", features = ["extension-module"] }
+pyo3 = { version = "0.29", features = ["extension-module", "abi3-py311"] }
 bss = { version = "0.5", package = "relib-bss" }
 mss = { version = "0.5", package = "relib-mss" }

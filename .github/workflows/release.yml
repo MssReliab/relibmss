@@ -1,16 +1,19 @@
-name: Build and Release with Custom Docker Container
+name: Build and Release (abi3 wheels)
 
 on:
   push:
     tags:
       - 'v*'
 
-jobs:
-  # Linux wheels (manylinux x86_64 + aarch64) and the sdist, cross-compiled with
-  # zig inside a custom maturin image. The sdist is uploaded ONLY here.
-  build-and-push:
-    runs-on: ubuntu-latest
+# abi3 (Stable ABI, pyo3 abi3-py311): ONE wheel per (OS, arch) covers Python
+# 3.11+. So each build job builds once with a single interpreter — no per-Python
+# matrix. Tests run across 3.11-3.14 to catch behaviour (not ABI) differences.
 
+jobs:
+  # Linux abi3 wheels (manylinux x86_64 + aarch64) and the sdist, cross-compiled
+  # with zig. The sdist is uploaded ONLY here.
+  linux:
+    runs-on: ubuntu-latest
     steps:
     - name: Log in to GHCR
       uses: docker/login-action@v3
@@ -22,7 +25,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Build and Push in Docker Container
+    - name: Build and upload (Docker)
       run: |
         docker run --rm \
           -v ${{ github.workspace }}:/workspace \
@@ -33,33 +36,23 @@ jobs:
           ghcr.io/okamumu/maturin:1.7.8 \
           /bin/bash -c "
           set -e
-          echo 'Starting build process...'
           mkdir -p dist
-          maturin build --release --target x86_64-unknown-linux-gnu -i python3.9 -i python3.10 -i python3.11 --zig --out dist
-          maturin build --release --target aarch64-unknown-linux-gnu -i python3.9 -i python3.10 -i python3.11 --zig --out dist
+          maturin build --release --target x86_64-unknown-linux-gnu -i python3.11 --zig --out dist
+          maturin build --release --target aarch64-unknown-linux-gnu -i python3.11 --zig --out dist
           maturin sdist --out dist
-          echo 'Build complete. Listing dist directory contents:'
           ls -lh dist
-          echo 'Uploading to PyPI...'
           twine upload --skip-existing dist/*.whl dist/*.tar.gz
-          echo 'Upload complete.'
           "
 
-  # macOS wheels: arm64 (macos-14, Apple Silicon) and x86_64 (macos-13, Intel).
-  # Native maturin build on the macOS runner — no Docker, no zig. Each job
-  # uploads only its own wheel; --skip-existing keeps concurrent/rerun uploads safe.
+  # macOS abi3 wheel: arm64 only (macos-14). Intel (macos-13) is dropped — its
+  # runners are scarce and Apple Silicon dominates; Intel Macs use the sdist.
   macos:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-13, macos-14]
-        python: ['3.9', '3.10', '3.11']
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python }}
+          python-version: '3.11'
       - name: Build and upload wheel
         env:
           TWINE_USERNAME: __token__
@@ -72,19 +65,14 @@ jobs:
           ls -lh dist
           twine upload --skip-existing dist/*.whl
 
-  # Windows wheels: x86_64 (win_amd64). Windows-on-ARM is skipped (immature
-  # Python arm64 ecosystem). Native maturin build on the Windows runner.
+  # Windows abi3 wheel: x86_64 (win_amd64).
   windows:
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ['3.9', '3.10', '3.11']
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python }}
+          python-version: '3.11'
       - name: Build and upload wheel
         shell: bash
         env:
@@ -97,3 +85,44 @@ jobs:
           maturin build --release --out dist -i python
           ls -lh dist
           twine upload --skip-existing dist/*.whl
+
+  # Verify the published abi3 wheel actually imports and passes the suite on
+  # every supported Python (3.11-3.14) — one wheel, many interpreters. Runs
+  # after the macOS build (arm64 wheel used by this arm64 runner).
+  test:
+    needs: [macos]
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          allow-prereleases: true
+      - name: Install published abi3 wheel and smoke-test
+        run: |
+          set -e
+          python -m pip install --upgrade pip
+          # Install the just-published abi3 wheel from PyPI (retry until the index
+          # serves it). One cp311-abi3 wheel must load on every 3.11-3.14 runtime.
+          for i in $(seq 1 20); do
+            pip install "relibmss==${GITHUB_REF_NAME#v}" && break
+            echo "waiting for PyPI to serve the wheel..."; sleep 20
+          done
+          # Run from a neutral dir so the source package does not shadow the wheel.
+          cd "$RUNNER_TEMP"
+          python - <<'PY'
+          import sys, relibmss as ms
+          print("python", sys.version.split()[0], "->", ms.__file__)
+          b = ms.BSS(); x = [b.defvar(f"x{i}") for i in range(3)]
+          p = b.getbdd(b.kofn(2, x)).prob({f"x{i}": 0.9 for i in range(3)})
+          assert abs(p - 0.972) < 1e-9, p
+          m = ms.MSS(); y = [m.defvar(f"y{i}", 3) for i in range(3)]
+          phi = y[0] + y[1] + y[2]
+          pr = m.getmdd(phi).prob({f"y{i}": [1/3,1/3,1/3] for i in range(3)}, values=[3,4,5,6])
+          assert abs(pr - 17/27) < 1e-9, pr
+          print("abi3 wheel OK on", sys.version.split()[0])
+          PY

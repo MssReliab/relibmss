@@ -1,11 +1,12 @@
-use pyo3::{pymodule, types::PyModule, PyResult, Python};
+use pyo3::prelude::*;
+use pyo3::types::PyModule;
 
 pub mod bdd;
 pub mod interval;
 pub mod mdd;
 
 #[pymodule]
-pub fn relibmss(_py: Python, m: &PyModule) -> PyResult<()> {
+pub fn relibmss(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<bdd::PyBddNode>()?;
     m.add_class::<bdd::PyBddMgr>()?;
     m.add_class::<mdd::PyMddNode>()?;

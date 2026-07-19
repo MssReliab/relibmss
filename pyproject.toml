@@ -4,11 +4,20 @@ build-backend = "maturin"
 
 [project]
 name = "relibmss"
-version = "0.11.2"
+version = "0.12.0"
 authors = [{ name = "Hiroyuki Okamura", email = "okamu@hiroshima-u.ac.jp" }]
 description = "A Python package for binary/multi state systems"
 readme = "README.md"
 license = { text = "MIT" }
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Rust",
+    "License :: OSI Approved :: MIT License",
+]
 
 [project.urls]
 Homepage = "https://github.com/MssReliab/relibmss"
