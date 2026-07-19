@@ -1,3 +1,10 @@
+# v0.11.2
+
+- Packaging: the release CI now also builds **macOS wheels** (arm64 + x86_64) and
+  **Windows wheels** (x86_64) in addition to the existing Linux manylinux wheels and
+  sdist. macOS/Apple-Silicon and Windows users no longer need a source build. No code
+  change (same 0.5.1 engine as 0.11.1).
+
 # v0.11.1
 
 - Perf: upgrade the engine to `relib-bss`/`relib-mss` 0.5.1, which narrows MDD

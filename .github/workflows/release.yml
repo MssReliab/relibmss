@@ -6,19 +6,21 @@ on:
       - 'v*'
 
 jobs:
+  # Linux wheels (manylinux x86_64 + aarch64) and the sdist, cross-compiled with
+  # zig inside a custom maturin image. The sdist is uploaded ONLY here.
   build-and-push:
     runs-on: ubuntu-latest
 
     steps:
     - name: Log in to GHCR
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GHCR_TOKEN }}
 
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Build and Push in Docker Container
       run: |
@@ -39,6 +41,59 @@ jobs:
           echo 'Build complete. Listing dist directory contents:'
           ls -lh dist
           echo 'Uploading to PyPI...'
-          twine upload dist/*.whl dist/*.tar.gz
+          twine upload --skip-existing dist/*.whl dist/*.tar.gz
           echo 'Upload complete.'
           "
+
+  # macOS wheels: arm64 (macos-14, Apple Silicon) and x86_64 (macos-13, Intel).
+  # Native maturin build on the macOS runner — no Docker, no zig. Each job
+  # uploads only its own wheel; --skip-existing keeps concurrent/rerun uploads safe.
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, macos-14]
+        python: ['3.9', '3.10', '3.11']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Build and upload wheel
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          set -e
+          python -m pip install --upgrade pip
+          pip install maturin twine
+          maturin build --release --out dist -i python
+          ls -lh dist
+          twine upload --skip-existing dist/*.whl
+
+  # Windows wheels: x86_64 (win_amd64). Windows-on-ARM is skipped (immature
+  # Python arm64 ecosystem). Native maturin build on the Windows runner.
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.9', '3.10', '3.11']
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Build and upload wheel
+        shell: bash
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          set -e
+          python -m pip install --upgrade pip
+          pip install maturin twine
+          maturin build --release --out dist -i python
+          ls -lh dist
+          twine upload --skip-existing dist/*.whl
