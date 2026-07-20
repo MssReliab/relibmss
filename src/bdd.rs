@@ -150,6 +150,11 @@ impl PyBddNode {
         PyBddNode(self.0.minpath())
     }
 
+    /// Coherence-checked minpath: `None` if the function is not monotone.
+    pub fn _minpath_checked(&self) -> Option<PyBddNode> {
+        self.0.minpath_checked().map(PyBddNode)
+    }
+
     pub fn _size(&self) -> (u64, u64, u64) {
         self.0.size()
     }

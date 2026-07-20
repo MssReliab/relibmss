@@ -210,3 +210,9 @@ class MddNode:
     
     def minpath(self):
         return MddNode(self.mdd, self.node._minpath())
+
+    def minpath_checked(self):
+        """Minimal path/cut vectors if the structure function is coherent
+        (monotone), else ``None``."""
+        r = self.node._minpath_checked()
+        return None if r is None else MddNode(self.mdd, r)

@@ -1,3 +1,12 @@
+# v0.13.0
+
+- Add `BddNode.minpath_checked()` / `MddNode.minpath_checked()` (engine
+  relib-bss/relib-mss 0.6.0): returns the minimal path/cut sets if the structure
+  function is monotone (coherent), else `None`. `minpath()` requires a monotone
+  function; use the checked variant to detect a non-monotone input instead of
+  raising. Coherence is detected inside the minsol recursion (local invariant on
+  the canonical diagram), aborting early on the first violation.
+
 # v0.12.0
 
 - **abi3 (Stable ABI) wheels.** The extension now builds against pyo3's

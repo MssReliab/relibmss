@@ -173,6 +173,11 @@ impl PyMddNode {
         PyMddNode(self.0.minpath())
     }
 
+    /// Coherence-checked minpath: `None` if the function is not coherent.
+    pub fn _minpath_checked(&mut self) -> Option<PyMddNode> {
+        self.0.minpath_checked().map(PyMddNode)
+    }
+
     pub fn _mdd_count(&self, ss: Vec<i32>) -> u64 {
         let ss = ss.iter().map(|x| *x).collect::<HashSet<_>>();
         self.0.mdd_count(&ss)
