@@ -184,13 +184,12 @@ class BddNode:
         return self.node._prob_interval(interval_probability, values)
 
     def minpath(self):
-        return BddNode(self.bdd, self.node._minpath())
-
-    def minpath_checked(self):
-        """Minimal path/cut sets if the function is monotone (coherent),
-        else ``None``. minpath() requires a monotone function; use this to
-        detect a non-monotone input instead of raising."""
-        r = self.node._minpath_checked()
+        """Minimal path/cut sets (minimal solutions) if the function is
+        monotone (coherent), else ``None``. minpath is only defined for a
+        monotone structure function (fault trees built from ``&``/``|``/``kofn``
+        always are); a non-monotone one (e.g. using ``^`` or ``~``) returns
+        ``None``."""
+        r = self.node._minpath()
         return None if r is None else BddNode(self.bdd, r)
 
     def bmeas(self, probability, values=None):

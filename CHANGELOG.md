@@ -1,3 +1,14 @@
+# v0.14.0
+
+- **`minpath()` now returns `None`** when the structure function is not monotone
+  (coherent), instead of raising. This replaces the v0.13.0 pair
+  `minpath()` (raised) + `minpath_checked()` (returned `None`): there is now a
+  single `minpath()` that returns the minimal path/cut sets or `None`
+  (`minpath_checked` is removed). Engine bumped to relib-bss/relib-mss 0.7.0.
+- Docs: the README is standardized on the node-centric style
+  (`bss.getbdd(top).prob(...)` / `mss.getmdd(top)...`); the obsolete
+  `Context`-centric calls and the duplicated low-level examples were consolidated.
+
 # v0.13.0
 
 - Add `BddNode.minpath_checked()` / `MddNode.minpath_checked()` (engine

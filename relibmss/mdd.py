@@ -209,10 +209,7 @@ class MddNode:
         return self.node._prob_interval(interval_probability, values)
     
     def minpath(self):
-        return MddNode(self.mdd, self.node._minpath())
-
-    def minpath_checked(self):
         """Minimal path/cut vectors if the structure function is coherent
         (monotone), else ``None``."""
-        r = self.node._minpath_checked()
+        r = self.node._minpath()
         return None if r is None else MddNode(self.mdd, r)

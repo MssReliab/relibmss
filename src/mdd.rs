@@ -169,13 +169,9 @@ impl PyMddNode {
         self.0.prob(&pv, &ss)
     }
 
-    pub fn _minpath(&mut self) -> PyMddNode {
-        PyMddNode(self.0.minpath())
-    }
-
-    /// Coherence-checked minpath: `None` if the function is not coherent.
-    pub fn _minpath_checked(&mut self) -> Option<PyMddNode> {
-        self.0.minpath_checked().map(PyMddNode)
+    /// Minimal path/cut vectors, or `None` if the function is not coherent.
+    pub fn _minpath(&mut self) -> Option<PyMddNode> {
+        self.0.minpath().map(PyMddNode)
     }
 
     pub fn _mdd_count(&self, ss: Vec<i32>) -> u64 {

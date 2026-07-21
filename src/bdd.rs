@@ -146,13 +146,9 @@ impl PyBddNode {
         self.0.bmeas(&pv, &ss)
     }
 
-    pub fn _minpath(&self) -> PyBddNode {
-        PyBddNode(self.0.minpath())
-    }
-
-    /// Coherence-checked minpath: `None` if the function is not monotone.
-    pub fn _minpath_checked(&self) -> Option<PyBddNode> {
-        self.0.minpath_checked().map(PyBddNode)
+    /// Minimal path/cut sets, or `None` if the function is not monotone.
+    pub fn _minpath(&self) -> Option<PyBddNode> {
+        self.0.minpath().map(PyBddNode)
     }
 
     pub fn _size(&self) -> (u64, u64, u64) {

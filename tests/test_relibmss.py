@@ -426,17 +426,17 @@ def test_run_ex11():
 
 
 
-def test_minpath_checked_coherence():
+def test_minpath_coherence():
     # BSS: monotone -> node, non-monotone -> None.
     b = ms.BSS()
     x, y = b.defvar("x"), b.defvar("y")
-    assert b.getbdd(x & y).minpath_checked() is not None
-    assert b.getbdd(x | y).minpath_checked() is not None
-    assert b.getbdd(x ^ y).minpath_checked() is None  # xor: non-monotone
+    assert b.getbdd(x & y).minpath() is not None
+    assert b.getbdd(x | y).minpath() is not None
+    assert b.getbdd(x ^ y).minpath() is None  # xor: non-monotone
 
     # MSS: coherent value / boolean -> node, non-coherent -> None.
     m = ms.MSS()
     u, v = m.defvar("u", 3), m.defvar("v", 3)
-    assert m.getmdd(u + v).minpath_checked() is not None   # coherent value
-    assert m.getmdd(u - v).minpath_checked() is None       # u - v decreases in v
-    assert m.getmdd(u < v).minpath_checked() is None       # [u<v] decreases in u
+    assert m.getmdd(u + v).minpath() is not None   # coherent value
+    assert m.getmdd(u - v).minpath() is None       # u - v decreases in v
+    assert m.getmdd(u < v).minpath() is None       # [u<v] decreases in u
