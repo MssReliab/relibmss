@@ -244,6 +244,29 @@ def test_mss_mincut():
     assert mss.getmdd(X - Y).mincut() is None
 
 
+def test_zmdd_dot_and_extract_len():
+    mss = ms.MSS()
+    X = mss.defvar("X", 3)
+    Y = mss.defvar("Y", 3)
+    Z = mss.defvar("Z", 3)
+    phi = mss.getmdd(mss.Max([mss.Min([X, Y]), Z]))
+
+    paths = phi.minpath()
+    # len(extract(values)) agrees with count(values) and with the enumeration
+    assert len(paths.extract([1, 2])) == paths.count([1, 2]) == 4
+    assert len(list(paths.extract([1, 2]))) == 4
+    assert len(paths.extract([1])) == 2
+
+    cuts = phi.mincut()
+    assert len(cuts.extract([0])) == cuts.count([0])
+
+    dot = paths.dot()
+    assert dot.startswith("digraph {")
+    assert dot.rstrip().endswith("}")
+    for label in ("X", "Y", "Z"):
+        assert 'label="%s"' % label in dot
+
+
 def test_deep_expression_does_not_hit_recursion_limit():
     # And([...]) builds a left-leaning tree; the evaluator uses an explicit stack.
     bss = ms.BSS()

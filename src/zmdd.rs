@@ -30,11 +30,17 @@ impl PyZmddNode {
     pub fn _extract(&self, ss: Vec<i32>) -> PyZmddPath {
         PyZmddPath::new(self, ss)
     }
+
+    pub fn _dot(&self) -> String {
+        self.0.dot()
+    }
 }
 
 #[pyclass(unsendable)]
 pub struct PyZmddPath {
+    zmddnode: ZmddNode<i32>,
     path: ZmddPath<i32>,
+    domain: HashSet<i32>,
 }
 
 #[pymethods]
@@ -43,8 +49,14 @@ impl PyZmddPath {
     fn new(node: &PyZmddNode, ss: Vec<i32>) -> Self {
         let ssv: HashSet<i32> = ss.into_iter().collect();
         PyZmddPath {
+            zmddnode: node.0.clone(),
             path: node.0.extract(&ssv),
+            domain: ssv,
         }
+    }
+
+    fn __len__(&self) -> usize {
+        self.zmddnode.count(&self.domain) as usize
     }
 
     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {

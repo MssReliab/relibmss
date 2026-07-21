@@ -40,5 +40,12 @@ class ZmddNode:
 
     def extract(self, values):
         """Enumerate the minimal path vectors (as ``{var: value}``, non-zero components only)
-        whose performance label is in ``values``."""
+        whose performance label is in ``values``. The returned iterator also supports
+        ``len()`` (same value as :meth:`count`)."""
         return self.node._extract(values)
+
+    def dot(self):
+        """Graphviz source for the ZMDD diagram. Edge labels are the raw edge indices; for a
+        cut family (from :meth:`MddNode.mincut`) ``extract`` reports states as
+        ``edge_num-1 - d``, but the diagram shown here is the raw one."""
+        return self.node._dot()

@@ -1,3 +1,14 @@
+# v0.20.0
+
+- **New: `ZmddNode.dot()`** (engine relib-mdd/relib-mss 0.13.0) — Graphviz source for a minimal
+  path/cut vector family, matching `BddNode.dot()` / `MddNode.dot()` / `ZddNode.dot()`. Edge
+  labels are the raw edge indices; the 0-edge is drawn (in a ZMDD it means "component absent from
+  the vector"). For a cut family (`mincut()`), `extract` reports states as `edge_num-1 - d` while
+  the diagram shows the raw edges.
+- **`len()` on `ZmddNode.extract(values)`** — the returned iterator now implements `__len__`
+  (same value as `count(values)`), so `len(s.extract([1]))` works as it already did for
+  `ZddNode.extract` / `BddNode.extract`.
+
 # v0.19.0
 
 - **New: multi-state minimal cut vectors — `MddNode.mincut()`** (engine relib-mss 0.12.0).
