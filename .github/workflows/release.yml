@@ -126,3 +126,34 @@ jobs:
           assert abs(pr - 17/27) < 1e-9, pr
           print("abi3 wheel OK on", sys.version.split()[0])
           PY
+
+  # Create the GitHub Release for the tag, once the wheels are on PyPI and the
+  # published wheel has passed the smoke test. Notes come from the matching
+  # `# vX.Y.Z` section of CHANGELOG.md; no files are attached (PyPI is the
+  # distribution channel).
+  github-release:
+    needs: [linux, macos, windows, test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release from the CHANGELOG section
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          awk -v ver="# ${GITHUB_REF_NAME}" '$0==ver{f=1;next} f&&/^# v/{exit} f' \
+            CHANGELOG.md > notes.md
+          # An empty body means the CHANGELOG entry is missing — fail loudly
+          # rather than publishing a blank release.
+          if [ ! -s notes.md ]; then
+            echo "No '# ${GITHUB_REF_NAME}' section in CHANGELOG.md" >&2
+            exit 1
+          fi
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --notes-file notes.md --latest
+          else
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" \
+              --notes-file notes.md --latest
+          fi
