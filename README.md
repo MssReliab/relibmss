@@ -535,17 +535,29 @@ for path in s.extract([1, 2, 3]):
 ```
 
 `minpath` requires a **coherent (monotone)** structure function; it returns `None` when the
-function is not coherent. The result is a **`ZmddNode`** set family that supports label-wise
-set operations — `&` intersection, `-` set difference — plus `count(values)`:
+function is not coherent. The result is a **`ZmddNode`** — the multi-state analogue of the BSS
+`ZddNode`: a family of minimal path **vectors** (each `{var: state}`, sparse, so only non-zero
+components are listed) stratified by the performance label they reach. It supports label-wise
+set operations — `&` intersection, `-` set difference — plus `count(values)` / `extract(values)`:
 
 ```python
-a = mss.getmdd(gate2(mss, A, gate1(mss, B, C))).minpath()
-b = mss.getmdd(mss.Min([A, B])).minpath()
-print(list((a & b).extract([1, 2, 3])))   # intersection
-print((a - b).count([1, 2, 3]))            # size of the difference
+mss = ms.MSS()
+X = mss.defvar('X', 3)
+Y = mss.defvar('Y', 3)
+Z = mss.defvar('Z', 3)
+
+# φ = max(min(X, Y), Z): minimal path vectors {Z=1}, {Z=2}, {X=1,Y=1}, {X=2,Y=2}
+a = mss.getmdd(mss.Max([mss.Min([X, Y]), Z])).minpath()
+# min(X, Y): minimal path vectors {X=1,Y=1}, {X=2,Y=2}
+b = mss.getmdd(mss.Min([X, Y])).minpath()
+
+print(list((a & b).extract([1, 2])))   # intersection -> [{'X': 1, 'Y': 1}, {'X': 2, 'Y': 2}]
+print(list((a - b).extract([1, 2])))   # difference   -> [{'Z': 1}, {'Z': 2}]
+print((a - b).count([1, 2]))           # size of the difference -> 2
 ```
 
-Set operations require both families to come from the **same** `MSS` context.
+Set operations require both families to come from the **same** `MSS` context (they share one
+internal ZMDD forest); combining families from different contexts raises `ValueError`.
 
 ## TODO
 
