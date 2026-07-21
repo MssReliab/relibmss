@@ -1,3 +1,12 @@
+# v0.16.1
+
+- **Bug fix (correctness): MSS `minpath()` / `mincut()` produced non-minimal path/cut
+  vectors** for multi-state structure functions involving subsumption (engine relib-mss
+  0.9.1). E.g. `getmdd(Max([Min([X,Y]),Z])).minpath()` gained a spurious `(y=1,z=2)`.
+  Conjunctive (`Min`) shapes were unaffected. Verified exhaustively against brute-force
+  minimal path vectors (all monotone functions of n=3/K=2 and n=2/K=3). The BSS side is
+  unchanged behaviorally (an internal refactor to share the same zero-branch recursion).
+
 # v0.16.0
 
 - **Bug fix (correctness): `minpath`/`mincut` produced non-minimal sets for some monotone
