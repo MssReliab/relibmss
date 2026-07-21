@@ -592,6 +592,15 @@ interval_prob = {'X': [(0.2, 0.2), (0.3, 0.3), (0.5, 0.5)],
 print(node.bmeas_interval(interval_prob, [1, 2]))
 ```
 
+`bmeas_interval` returns a **guaranteed but conservative enclosure**: for every point
+probability inside the given `(lo, hi)` boxes the true importance lies within the returned
+interval (a degenerate box `lo == hi` reproduces `bmeas` exactly). It is not the tightest
+enclosure — interval arithmetic's dependency problem, together with the difference
+`P(φ|var=j) − P(φ|var=j−1)` being evaluated as a worst-case interval subtraction, widens the
+bounds (the interval can even straddle 0 when the true value has a definite sign). As with
+`prob_interval`, the constraint `sum_j p[var][j] == 1` is **not** enforced — the per-state
+bounds are treated independently.
+
 ## TODO
 
 - Add more examples

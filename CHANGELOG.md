@@ -1,3 +1,11 @@
+# v0.18.1
+
+- **Docs**: document `bmeas_interval` semantics — a guaranteed but *conservative* interval
+  enclosure of the Birnbaum importance (interval-arithmetic dependency problem + the worst-case
+  subtraction in the `D_j` difference widen the bounds; a degenerate box reproduces `bmeas`
+  exactly), and `sum_j p[var][j] == 1` is not enforced (per-state bounds treated independently,
+  as in `prob_interval`). `mdd.py` docstring + README "Importance analysis" note. Docs only.
+
 # v0.18.0
 
 - **New: multi-state Birnbaum importance — `MddNode.bmeas` / `bmeas_interval`** (engine

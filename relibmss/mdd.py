@@ -206,12 +206,25 @@ class MddNode:
         ``D_j = P(phi in values | var = j) - P(phi in values | var = j-1)`` is the importance
         of raising the component across the ``j-1 -> j`` state boundary (index ``d`` = the
         transition ``d -> d+1``). For a binary variable this is the single classic Birnbaum
-        measure. ``probability`` maps each variable to its per-state probability vector."""
+        measure. ``probability`` maps each variable to its per-state probability vector.
+
+        For imprecise (interval-valued) component probabilities use :meth:`bmeas_interval`."""
         return self.node._bmeas(probability, values)
 
     def bmeas_interval(self, probability, values):
-        """Interval-arithmetic version of :meth:`bmeas`; ``probability`` maps each variable to
-        a list of ``(lo, hi)`` per-state probability bounds."""
+        """Interval-arithmetic version of :meth:`bmeas`: ``probability`` maps each variable to a
+        list of ``(lo, hi)`` per-state probability bounds, and each returned ``D_j`` is an
+        :class:`Interval`.
+
+        The result is a **guaranteed but conservative enclosure** of the Birnbaum importance:
+        for every point probability inside the given boxes the true ``D_j`` lies within the
+        returned interval, and a degenerate box (``lo == hi``) reproduces :meth:`bmeas` exactly.
+        It is *not* the tightest enclosure, however -- interval arithmetic's dependency problem
+        (a variable's probability recurs in the formula, and the difference
+        ``P(phi|var=j) - P(phi|var=j-1)`` is evaluated with a worst-case interval subtraction)
+        widens the bounds, so the interval can straddle 0 even when the true value has a
+        definite sign. Like :meth:`prob_interval`, the constraint ``sum_j p[var][j] == 1`` is
+        **not** enforced -- the per-state ``(lo, hi)`` bounds are treated independently."""
         interval_probability = {k: [ms.Interval(u[0], u[1]) for u in v] for k, v in probability.items()}
         return self.node._bmeas_interval(interval_probability, values)
 
