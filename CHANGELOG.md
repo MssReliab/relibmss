@@ -1,3 +1,19 @@
+# v0.17.0
+
+- **New: ZMDD set algebra for multi-state (MSS) minimal path vectors** (engine relib 0.10.0).
+  `MddNode.minpath()` now returns a **`ZmddNode`** — a family of minimal path vectors stratified
+  by performance value — supporting the label-wise set operations `&` (intersection) and `-`
+  (set difference), plus `count(values)` / `extract(values)`. Set operations require both
+  families to come from the same `MSS`/`MDD` context (`ValueError` otherwise).
+- **Breaking**: `MSS`/`MDD` `minpath()` returns a `ZmddNode`, not an `MddNode`. Its
+  `extract(values)` enumerates sparse vectors (non-zero components only) reaching a label in
+  `values`, and no longer takes a `type=` argument. (`union`, arithmetic apply, dominance,
+  threshold, relabel, a standalone `ms.ZMDD()` builder are future work.)
+- **Breaking**: `MddNode.count()` / `MddNode.extract()` now enumerate full assignments only,
+  and the `type=` argument is removed (the `'zmdd'` reader is gone — read minimal-path-vector
+  families via the genuine `ZmddNode` returned by `minpath()`). Mirrors the engine reorg
+  (`mss` split into `mdd`/`mss`/`zmdd`; `MssMgr` owns both forests).
+
 # v0.16.1
 
 - **Bug fix (correctness): MSS `minpath()` / `mincut()` produced non-minimal path/cut

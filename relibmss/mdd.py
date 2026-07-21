@@ -1,4 +1,5 @@
 import relibmss as ms
+from .zmdd import ZmddNode
 
 def _to_mddnode(mdd, value):
     if isinstance(value, MddNode):
@@ -174,32 +175,22 @@ class MddNode:
         els_node = _to_mddnode(self.mdd, els)
         return MddNode(self.mdd, self.node._ifelse(then_node.node, els_node.node))
     
-    def count(self, values=None, type="zmdd"):
+    def count(self, values=None):
         if (not self.is_boolean()) and values is None:
             raise ValueError("Node is a value type. The argument 'values' must be provided")
         if self.is_boolean() and values is None:
             values = [1]
-        if type == "mdd":
-            return self.node._mdd_count(values)
-        elif type == "zmdd":
-            return self.node._zmdd_count(values)
-        else:
-            raise ValueError("Invalid type")
-    
+        return self.node._mdd_count(values)
+
     def dot(self):
         return self.node._dot()
-    
-    def extract(self, values=None, type="zmdd"):
+
+    def extract(self, values=None):
         if (not self.is_boolean()) and values is None:
             raise ValueError("Node is a value type. The argument 'values' must be provided")
         if self.is_boolean() and values is None:
             values = [1]
-        if type == "mdd":
-            return self.node._mdd_extract(values)
-        elif type == "zmdd":
-            return self.node._zmdd_extract(values)
-        else:
-            raise ValueError("Invalid type")
+        return self.node._mdd_extract(values)
     
     def prob(self, probability, values):
         return self.node._prob(probability, values)
@@ -209,7 +200,8 @@ class MddNode:
         return self.node._prob_interval(interval_probability, values)
     
     def minpath(self):
-        """Minimal path/cut vectors if the structure function is coherent
-        (monotone), else ``None``."""
-        r = self.node._minpath()
-        return None if r is None else MddNode(self.mdd, r)
+        """Minimal path vectors, as a genuine ZMDD set family (:class:`ZmddNode`) supporting
+        label-wise ``&`` / ``-``, or ``None`` if the structure function is not coherent
+        (monotone)."""
+        r = self.mdd._minpath(self.node)
+        return None if r is None else ZmddNode(self.mdd, r)

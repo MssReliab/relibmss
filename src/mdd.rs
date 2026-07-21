@@ -1,10 +1,11 @@
 use crate::interval::Interval;
+use crate::zmdd::PyZmddNode;
 use pyo3::{exceptions::PyValueError, prelude::*};
 use mss::prelude::*;
 use std::collections::{HashMap, HashSet};
 
 #[pyclass(unsendable)]
-pub struct PyMddMgr(MddMgr<i32>);
+pub struct PyMddMgr(MssMgr<i32>);
 
 #[pyclass(unsendable)]
 #[derive(Clone, Debug)]
@@ -14,7 +15,13 @@ pub struct PyMddNode(MddNode<i32>);
 impl PyMddMgr {
     #[new]
     pub fn new() -> Self {
-        PyMddMgr(MddMgr::new())
+        PyMddMgr(MssMgr::new())
+    }
+
+    /// Minimal path vectors of `node` as a genuine ZMDD family, or `None` if the structure
+    /// function is not coherent.
+    pub fn _minpath(&self, node: &PyMddNode) -> Option<PyZmddNode> {
+        self.0.minpath(&node.0).map(PyZmddNode)
     }
 
     pub fn _size(&self) -> (usize, usize, usize, usize) {
@@ -169,28 +176,13 @@ impl PyMddNode {
         self.0.prob(&pv, &ss)
     }
 
-    /// Minimal path/cut vectors, or `None` if the function is not coherent.
-    pub fn _minpath(&mut self) -> Option<PyMddNode> {
-        self.0.minpath().map(PyMddNode)
-    }
-
     pub fn _mdd_count(&self, ss: Vec<i32>) -> u64 {
         let ss = ss.iter().map(|x| *x).collect::<HashSet<_>>();
         self.0.mdd_count(&ss)
     }
 
-    pub fn _zmdd_count(&self, ss: Vec<i32>) -> u64 {
-        let ss = ss.iter().map(|x| *x).collect::<HashSet<_>>();
-        self.0.zmdd_count(&ss)
-    }
-    
-
     pub fn _mdd_extract(&self, ss: Vec<i32>) -> PyMddPath {
         PyMddPath::new(&self, ss)
-    }
-
-    pub fn _zmdd_extract(&self, ss: Vec<i32>) -> PyZMddPath {
-        PyZMddPath::new(&self, ss)
     }
 
     pub fn _size(&self) -> (u64, u64, u64) {
@@ -220,39 +212,6 @@ impl PyMddPath {
 
     fn __len__(&self) -> usize {
         self.bddnode.mdd_count(&self.domain) as usize
-    }
-
-    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
-        slf
-    }
-
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<HashMap<String, usize>> {
-        slf.bddpath.next()
-    }
-}
-
-#[pyclass(unsendable)]
-pub struct PyZMddPath {
-    bddnode: MddNode<i32>,
-    bddpath: ZMddPath<i32>,
-    domain: HashSet<i32>,
-}
-
-#[pymethods]
-impl PyZMddPath {
-    #[new]
-    fn new(node: &PyMddNode, ss: Vec<i32>) -> Self {
-        let ss = ss.iter().map(|x| *x).collect::<HashSet<_>>();
-        let bddpath = node.0.zmdd_extract(&ss);
-        PyZMddPath {
-            bddnode: node.0.clone(),
-            bddpath,
-            domain: ss.clone(),
-        }
-    }
-
-    fn __len__(&self) -> usize {
-        self.bddnode.zmdd_count(&self.domain) as usize
     }
 
     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {

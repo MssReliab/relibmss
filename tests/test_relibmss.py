@@ -530,3 +530,31 @@ def test_zdd_standalone_isolated():
     z2 = ms.ZDD()
     with pytest.raises(ValueError):
         _ = a | z2.singleton("x")
+
+
+def test_zmdd_set_algebra():
+    m = ms.MSS()
+    X, Y, Z = m.defvar('X', 3), m.defvar('Y', 3), m.defvar('Z', 3)
+
+    def sset(zn):
+        return sorted(tuple(sorted(d.items())) for d in zn.extract([1, 2]))
+
+    a = m.getmdd(m.Max([m.Min([X, Y]), Z])).minpath()   # {z=1},{z=2},{x=1,y=1},{x=2,y=2}
+    b = m.getmdd(m.Min([X, Y])).minpath()                # {x=1,y=1},{x=2,y=2}
+    assert isinstance(a, ms.ZmddNode)
+    # label-wise intersection / difference
+    assert sset(a & b) == [(('X', 1), ('Y', 1)), (('X', 2), ('Y', 2))]
+    assert sset(a - b) == [(('Z', 1),), (('Z', 2),)]
+    assert (a & b).count([1, 2]) == 2 and (a - b).count([1, 2]) == 2
+    # method forms agree
+    assert sset(a.intersect(b)) == sset(a & b)
+    assert sset(a.setdiff(b)) == sset(a - b)
+
+
+def test_zmdd_cross_context_error():
+    m1 = ms.MSS(); X1 = m1.defvar('X', 3)
+    m2 = ms.MSS(); X2 = m2.defvar('X', 3)
+    a = m1.getmdd(X1).minpath()
+    b = m2.getmdd(X2).minpath()
+    with pytest.raises(ValueError):
+        _ = a & b

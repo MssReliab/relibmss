@@ -65,3 +65,12 @@ A standalone `ms.ZDD()` is its own forest, so its families cannot be combined wi
 `minpath()` / `mincut()` results of a `BSS` context (that raises `ValueError`). The same set
 algebra is available on those results — see
 [Set algebra on path/cut families](../README.md#set-algebra-on-pathcut-families).
+
+## ZMDD (multi-state) — via `minpath()`, no standalone builder yet
+
+There is deliberately **no** `ms.ZMDD()` here yet. The multi-state analogue of a ZDD family —
+a **`ZmddNode`** (a family of minimal path vectors, stratified by performance value) — is
+currently produced only from `MSS`/`MDD` `minpath()`. It supports the label-wise set
+operations `&` (intersection) and `-` (set difference) plus `count(values)` / `extract(values)`
+— see the MSS section of the [README](../README.md). A from-scratch `ms.ZMDD()` builder (and
+`union` / arithmetic / threshold / relabel) is future work.

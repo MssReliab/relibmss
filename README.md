@@ -527,14 +527,25 @@ C = mss.defvar('C', 3)
 sx = gate1(mss, B, C)
 ss = gate2(mss, A, sx)
 
-s = mss.getmdd(ss).minpath()   # minimal path vectors
-print(s.dot())
-for path in s.extract([0, 1, 2], type='mdd'):
+s = mss.getmdd(ss).minpath()   # a ZmddNode: family of minimal path vectors
+# extract(values) enumerates the vectors reaching a performance label in `values`
+# (sparse: only non-zero components are listed)
+for path in s.extract([1, 2, 3]):
     print(path)
 ```
 
 `minpath` requires a **coherent (monotone)** structure function; it returns `None` when the
-function is not coherent.
+function is not coherent. The result is a **`ZmddNode`** set family that supports label-wise
+set operations — `&` intersection, `-` set difference — plus `count(values)`:
+
+```python
+a = mss.getmdd(gate2(mss, A, gate1(mss, B, C))).minpath()
+b = mss.getmdd(mss.Min([A, B])).minpath()
+print(list((a & b).extract([1, 2, 3])))   # intersection
+print((a - b).count([1, 2, 3]))            # size of the difference
+```
+
+Set operations require both families to come from the **same** `MSS` context.
 
 ## TODO
 

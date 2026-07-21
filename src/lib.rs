@@ -5,6 +5,7 @@ pub mod bdd;
 pub mod interval;
 pub mod mdd;
 pub mod zdd;
+pub mod zmdd;
 
 #[pymodule]
 pub fn relibmss(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -16,6 +17,8 @@ pub fn relibmss(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<zdd::PyZddMgr>()?;
     m.add_class::<zdd::PyZddNode>()?;
     m.add_class::<zdd::PyZddPath>()?;
+    m.add_class::<zmdd::PyZmddNode>()?;
+    m.add_class::<zmdd::PyZmddPath>()?;
     m.add_class::<interval::Interval>()?;
     Ok(())
 }

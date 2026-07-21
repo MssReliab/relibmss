@@ -24,9 +24,8 @@ C = mss.defvar('C', 3)
 sx = gate1(mss, B, C)
 ss = gate2(mss, A, sx)
 
-mdd = mss.minpath(ss)
-print(mdd.dot())
-for path in mdd.extract([0,1,2], type='mdd'):
+mp = mss.minpath(ss)   # a ZmddNode (minimal path vectors)
+for path in mp.extract([1, 2, 3]):
     print(path)
 
 # An example of the direct use of MDD
@@ -40,8 +39,7 @@ C = mdd.defvar('C', 3)
 sx = gate1(mdd, B, C)
 ss = gate2(mdd, A, sx)
 
-mdd = ss.minpath()
-print(mdd.dot())
-for path in mdd.extract([0,1,2], type='mdd'):
+mp = ss.minpath()      # a ZmddNode
+for path in mp.extract([1, 2, 3]):
     print(path)
 
