@@ -111,6 +111,8 @@ class ZddNode:
         return self.node._extract(values)
 
     def dot(self):
+        """Graphviz source for the ZDD diagram. The ``0`` terminal (the empty family) and the
+        edges into it are omitted; the 0-edge is still drawn wherever it leads somewhere."""
         return self.node._dot()
 
     def size(self):

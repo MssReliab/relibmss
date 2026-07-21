@@ -47,5 +47,6 @@ class ZmddNode:
     def dot(self):
         """Graphviz source for the ZMDD diagram. Edge labels are the raw edge indices; for a
         cut family (from :meth:`MddNode.mincut`) ``extract`` reports states as
-        ``edge_num-1 - d``, but the diagram shown here is the raw one."""
+        ``edge_num-1 - d``, but the diagram shown here is the raw one. The ``Undet`` terminal
+        (the empty family) and the edges into it are omitted."""
         return self.node._dot()

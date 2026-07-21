@@ -262,6 +262,8 @@ def test_zmdd_dot_and_extract_len():
 
     dot = paths.dot()
     assert dot.startswith("digraph {")
+    # the empty family (Undet) and the edges into it are not drawn
+    assert "Undet" not in dot
     assert dot.rstrip().endswith("}")
     for label in ("X", "Y", "Z"):
         assert 'label="%s"' % label in dot
@@ -549,6 +551,11 @@ def test_zdd_set_algebra():
     # Regression for the minsol bug: minpath(x&y|z) is {x,y},{z} — the non-minimal
     # {y,z} that older versions produced must be gone.
     assert sset(b.getbdd(x & y | z).minpath()) == [["x", "y"], ["z"]]
+
+    # dot(): the `0` terminal (the empty family) is not drawn, but the 0-edge is.
+    dot = b.getbdd(x & y | z).minpath().dot()
+    assert 'shape=square, label="0"' not in dot
+    assert '[label="0"]' in dot
 
     a = b.getbdd(x & y | z).minpath()   # { {z}, {x,y} }
     c = b.getbdd(x | z).minpath()       # { {x}, {z} }

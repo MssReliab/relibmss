@@ -1,3 +1,11 @@
+# v0.20.1
+
+- **`ZddNode.dot()` / `ZmddNode.dot()`: the empty-family terminal is no longer drawn**
+  (engine relib-bdd/relib-mdd 0.13.1). The `0` (ZDD) / `Undet` (ZMDD) terminal denotes the
+  empty family, so every dead branch pointed at it and the arrows swamped the diagram; that
+  terminal and the edges into it are now omitted. The 0-*edge* is unaffected — it means
+  "element/component not in the set" and is still drawn wherever it leads somewhere.
+
 # v0.20.0
 
 - **New: `ZmddNode.dot()`** (engine relib-mdd/relib-mss 0.13.0) — Graphviz source for a minimal
