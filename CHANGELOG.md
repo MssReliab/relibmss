@@ -1,3 +1,10 @@
+# Unreleased
+
+- **Docs**: rewrote the MSS "minimal vector sets" set-algebra example in `README.md` to be
+  self-contained with annotated, verified output (`max(min(X,Y),Z)` intersect/setdiff
+  `min(X,Y)`), mirroring the BSS `ZddNode` example; described `ZmddNode` as the multi-state
+  analogue of `ZddNode` and noted the same-context (`ValueError`) constraint. Docs only.
+
 # v0.17.0
 
 - **New: ZMDD set algebra for multi-state (MSS) minimal path vectors** (engine relib 0.10.0).
