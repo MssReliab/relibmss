@@ -146,9 +146,19 @@ impl PyBddNode {
         self.0.bmeas(&pv, &ss)
     }
 
-    /// Minimal path/cut sets, or `None` if the function is not monotone.
+    /// Minimal path vectors, or `None` if the function is not monotone.
     pub fn _minpath(&self) -> Option<PyBddNode> {
         self.0.minpath().map(PyBddNode)
+    }
+
+    /// The dual structure function `phi^D(x) = !phi(!x)`.
+    pub fn _dual(&self) -> PyBddNode {
+        PyBddNode(self.0.dual())
+    }
+
+    /// Minimal cut vectors, or `None` if the function is not monotone.
+    pub fn _mincut(&self) -> Option<PyBddNode> {
+        self.0.mincut().map(PyBddNode)
     }
 
     pub fn _size(&self) -> (u64, u64, u64) {

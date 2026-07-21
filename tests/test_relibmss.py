@@ -440,3 +440,20 @@ def test_minpath_coherence():
     assert m.getmdd(u + v).minpath() is not None   # coherent value
     assert m.getmdd(u - v).minpath() is None       # u - v decreases in v
     assert m.getmdd(u < v).minpath() is None       # [u<v] decreases in u
+
+
+def test_mincut_dual():
+    b = ms.BSS()
+    x, y = b.defvar("x"), b.defvar("y")
+    # Series x & y: min path = {x,y} (1); min cut = {x},{y} (2).
+    series = b.getbdd(x & y)
+    assert len(list(series.minpath().extract())) == 1
+    assert len(list(series.mincut().extract())) == 2
+    # Parallel x | y: min path = {x},{y} (2); min cut = {x,y} (1).
+    parallel = b.getbdd(x | y)
+    assert len(list(parallel.minpath().extract())) == 2
+    assert len(list(parallel.mincut().extract())) == 1
+    # dual is an involution and dual(x&y) == x|y.
+    assert series.dual().dual().prob({"x": 0.3, "y": 0.4}) == series.prob({"x": 0.3, "y": 0.4})
+    # Non-monotone -> mincut None.
+    assert b.getbdd(x ^ y).mincut() is None

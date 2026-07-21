@@ -184,12 +184,26 @@ class BddNode:
         return self.node._prob_interval(interval_probability, values)
 
     def minpath(self):
-        """Minimal path/cut sets (minimal solutions) if the function is
-        monotone (coherent), else ``None``. minpath is only defined for a
+        """Minimal **path** vectors of the structure function (minimal sets of
+        components whose functioning makes the system function), or ``None`` if
+        the function is not monotone (coherent). minpath is only defined for a
         monotone structure function (fault trees built from ``&``/``|``/``kofn``
         always are); a non-monotone one (e.g. using ``^`` or ``~``) returns
-        ``None``."""
+        ``None``. See :meth:`mincut` for the dual."""
         r = self.node._minpath()
+        return None if r is None else BddNode(self.bdd, r)
+
+    def dual(self):
+        """The dual structure function ``phi^D(x) = ~phi(~x)``. The minimal
+        path vectors of the dual are the minimal cut vectors of the original;
+        see :meth:`mincut`."""
+        return BddNode(self.bdd, self.node._dual())
+
+    def mincut(self):
+        """Minimal **cut** vectors of the structure function (minimal sets of
+        components whose failure makes the system fail), or ``None`` if the
+        function is not monotone. Equivalent to ``dual().minpath()``."""
+        r = self.node._mincut()
         return None if r is None else BddNode(self.bdd, r)
 
     def bmeas(self, probability, values=None):

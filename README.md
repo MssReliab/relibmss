@@ -123,7 +123,17 @@ bdd = ms.BDD(bss.get_varorder())   # reuse the order in a raw BDD
 mdd = ms.MDD(mss.get_varorder())   # likewise for an MDD
 ```
 
-### Obtain the minimal cut sets
+### Obtain the minimal path / cut vectors
+
+For a structure function `φ`, `minpath()` returns its **minimal path vectors** (minimal
+sets of components whose functioning makes the system function) and `mincut()` returns its
+**minimal cut vectors** (minimal sets whose failure makes the system fail). They are dual:
+`mincut()` is `dual().minpath()`, where `dual()` is the dual structure function
+`φ^D(x) = ~φ(~x)`.
+
+Whether these coincide with "minimal path sets" or "minimal cut sets" in the reliability
+sense depends only on how you framed `φ` — as a success function or as a failure (fault
+tree) function.
 
 ```python
 import relibmss as ms
@@ -142,21 +152,27 @@ print('All paths which evaluate to one')
 for x in node.extract(type='bdd'):
     print(x)
 
-# Minimal path vectors (minimal cut sets)
-s = node.minpath()
-min_path = s.extract()
+# Minimal path vectors of the structure function
+min_path = node.minpath().extract()
 print('The number of minimal path vectors:', len(min_path))
 for x in min_path:
     print(x)
+
+# Minimal cut vectors (= minimal path vectors of the dual)
+min_cut = node.mincut().extract()
+print('The number of minimal cut vectors:', len(min_cut))
+for x in min_cut:
+    print(x)
 ```
 
-`minpath` requires a **monotone (coherent)** structure function (fault trees built from
-`&`/`|`/`kofn` always are). On a non-monotone function (e.g. one using `^` or `~`) it returns
-`None`:
+`minpath`/`mincut` require a **monotone (coherent)** structure function (fault trees built
+from `&`/`|`/`kofn` always are). On a non-monotone function (e.g. one using `^` or `~`) they
+return `None`:
 
 ```python
 node = bss.getbdd(A ^ B)     # xor: not monotone
 print(node.minpath())        # None
+print(node.mincut())         # None
 ```
 
 ### Draw a BDD
@@ -277,7 +293,7 @@ top = g126 & g138 & g144
 bdd = bss.getbdd(top)
 print(bdd.size())      # number of nodes in the BDD
 
-s = bdd.minpath()      # minimal path vectors (minimal cut sets)
+s = bdd.minpath()      # minimal path vectors of the structure function
 min_path = s.extract()
 print('The number of minimal path sets:', len(min_path))
 

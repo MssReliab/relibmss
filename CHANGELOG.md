@@ -1,3 +1,15 @@
+# v0.15.0
+
+- **Added `BddNode.dual()` and `BddNode.mincut()`** (engine relib-bss 0.8.0). `dual()` is the
+  dual structure function `φ^D(x) = ~φ(~x)`; `mincut()` returns the minimal **cut** vectors of
+  the structure function (`= dual().minpath()`), or `None` when the function is not monotone
+  (coherent). `minpath()` gives the minimal **path** vectors; the two are dual (series `x&y`:
+  path `{x,y}`, cut `{x},{y}`; parallel is the reverse). BSS/BDD only — the multi-state (MDD)
+  dual is not yet implemented.
+- Docs: `minpath`/`mincut`/`dual` are described in terms of the **structure function** (whether
+  they coincide with reliability "path sets" / "cut sets" depends only on success vs fault-tree
+  framing). README gains a combined minimal path/cut example.
+
 # v0.14.0
 
 - **`minpath()` now returns `None`** when the structure function is not monotone

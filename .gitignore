@@ -20,4 +20,6 @@ Cargo.lock
 # venv
 .venv/
 
-relibmss/relibmss.cpython*
+# built extension (maturin develop output). abi3 since 0.12.0 is relibmss.abi3.so;
+# the old per-version name was relibmss.cpython-XX-*.so — cover both.
+relibmss/relibmss*.so
