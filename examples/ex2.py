@@ -12,7 +12,7 @@ C = bss.defvar('C')
 top = bss.kofn(2, [A, B, C]) # k-of-n gate
 
 # Convert the ZDD representation to a list of sets
-path = bss.getbdd(top).extract(type='bdd')
+path = bss.getbdd(top).extract()
 print('All paths which is to be one')
 for x in path:
     print(x)
@@ -38,7 +38,7 @@ C = bdd.defvar('C')
 top = bdd.kofn(2, [A, B, C]) # k-of-n gate
 
 # Convert the ZDD representation to a list of sets
-path = top.extract(type='bdd')
+path = top.extract()
 print('All paths which is to be one')
 for x in path:
     print(x)

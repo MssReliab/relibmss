@@ -1,4 +1,5 @@
 import relibmss as ms
+from .zdd import ZddNode
 
 def _to_bddnode(bdd, value):
     if isinstance(value, BddNode):
@@ -149,28 +150,23 @@ class BddNode:
     def size(self):
         return self.node._size()
     
-    def count(self, values=None, type="zdd"):
+    def count(self, values=None):
+        """Number of satisfying assignments (paths to the ``1`` terminal). For minimal
+        path/cut *sets*, use :meth:`minpath` / :meth:`mincut` and count the resulting
+        :class:`ZddNode`."""
         if values is None:
             values = [True]
-        if type == "bdd":
-            return self.node._bdd_count(values)
-        elif type == "zdd":
-            return self.node._zdd_count(values)
-        else:
-            raise ValueError("Invalid type")
+        return self.node._bdd_count(values)
 
     def dot(self):
         return self.node._dot()
 
-    def extract(self, values=None, type="zdd"):
+    def extract(self, values=None):
+        """Enumerate the satisfying assignments (paths to the ``1`` terminal) as lists of
+        literals. For minimal path/cut sets use :meth:`minpath` / :meth:`mincut`."""
         if values is None:
             values = [True]
-        if type == "bdd":
-            return self.node._bdd_extract(values)
-        elif type == "zdd":
-            return self.node._zdd_extract(values)
-        else:
-            raise ValueError("Invalid type")
+        return self.node._bdd_extract(values)
 
     def prob(self, probability, values=None):
         if values is None:
@@ -184,27 +180,28 @@ class BddNode:
         return self.node._prob_interval(interval_probability, values)
 
     def minpath(self):
-        """Minimal **path** vectors of the structure function (minimal sets of
-        components whose functioning makes the system function), or ``None`` if
-        the function is not monotone (coherent). minpath is only defined for a
-        monotone structure function (fault trees built from ``&``/``|``/``kofn``
-        always are); a non-monotone one (e.g. using ``^`` or ``~``) returns
-        ``None``. See :meth:`mincut` for the dual."""
-        r = self.node._minpath()
-        return None if r is None else BddNode(self.bdd, r)
+        """Minimal **path** vectors of the structure function, as a genuine ZDD set
+        family (:class:`ZddNode`), or ``None`` if the function is not monotone
+        (coherent). A minimal path vector is a minimal set of components whose
+        functioning makes the system function. Fault trees built from
+        ``&``/``|``/``kofn`` are always monotone; a non-monotone one (e.g. using ``^``
+        or ``~``) returns ``None``. See :meth:`mincut` for the dual."""
+        r = self.bdd._minpath(self.node)
+        return None if r is None else ZddNode(self.bdd, r)
 
     def dual(self):
-        """The dual structure function ``phi^D(x) = ~phi(~x)``. The minimal
-        path vectors of the dual are the minimal cut vectors of the original;
-        see :meth:`mincut`."""
+        """The dual structure function ``phi^D(x) = ~phi(~x)`` (a boolean BDD node).
+        The minimal path vectors of the dual are the minimal cut vectors of the
+        original; see :meth:`mincut`."""
         return BddNode(self.bdd, self.node._dual())
 
     def mincut(self):
-        """Minimal **cut** vectors of the structure function (minimal sets of
-        components whose failure makes the system fail), or ``None`` if the
-        function is not monotone. Equivalent to ``dual().minpath()``."""
-        r = self.node._mincut()
-        return None if r is None else BddNode(self.bdd, r)
+        """Minimal **cut** vectors of the structure function, as a genuine ZDD set
+        family (:class:`ZddNode`), or ``None`` if the function is not monotone. A
+        minimal cut vector is a minimal set of components whose failure makes the
+        system fail; equivalent to ``dual().minpath()``."""
+        r = self.bdd._mincut(self.node)
+        return None if r is None else ZddNode(self.bdd, r)
 
     def bmeas(self, probability, values=None):
         if values is None:

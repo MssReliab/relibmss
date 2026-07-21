@@ -1,10 +1,11 @@
 use crate::interval::Interval;
+use crate::zdd::PyZddNode;
 use pyo3::{exceptions::PyValueError, prelude::*};
 use bss::prelude::*;
 use std::collections::HashMap;
 
 #[pyclass(unsendable)]
-pub struct PyBddMgr(BddMgr);
+pub struct PyBddMgr(BssMgr);
 
 #[pyclass(unsendable)]
 #[derive(Clone)]
@@ -15,7 +16,7 @@ impl PyBddMgr {
     // constructor
     #[new]
     pub fn new() -> Self {
-        PyBddMgr(BddMgr::new())
+        PyBddMgr(BssMgr::new())
     }
 
     pub fn _size(&self) -> (usize, usize, usize) {
@@ -67,6 +68,18 @@ impl PyBddMgr {
     pub fn _kofn(&self, k: usize, nodes: Vec<PyBddNode>) -> PyBddNode {
         let xs = nodes.iter().map(|x| x.0.clone()).collect::<Vec<_>>();
         PyBddNode(self.0.kofn(k, &xs))
+    }
+
+    /// Minimal path vectors of `node` as a genuine ZDD set family, or `None` if the
+    /// structure function is not monotone (coherent).
+    pub fn _minpath(&self, node: &PyBddNode) -> Option<PyZddNode> {
+        self.0.minpath(&node.0).map(PyZddNode)
+    }
+
+    /// Minimal cut vectors of `node` as a genuine ZDD set family, or `None` if the
+    /// structure function is not monotone.
+    pub fn _mincut(&self, node: &PyBddNode) -> Option<PyZddNode> {
+        self.0.mincut(&node.0).map(PyZddNode)
     }
 }
 
@@ -146,19 +159,10 @@ impl PyBddNode {
         self.0.bmeas(&pv, &ss)
     }
 
-    /// Minimal path vectors, or `None` if the function is not monotone.
-    pub fn _minpath(&self) -> Option<PyBddNode> {
-        self.0.minpath().map(PyBddNode)
-    }
-
-    /// The dual structure function `phi^D(x) = !phi(!x)`.
+    /// The dual structure function `phi^D(x) = !phi(!x)` (a boolean BDD; `minpath`/`mincut`
+    /// live on the manager since they also need the ZDD forest).
     pub fn _dual(&self) -> PyBddNode {
         PyBddNode(self.0.dual())
-    }
-
-    /// Minimal cut vectors, or `None` if the function is not monotone.
-    pub fn _mincut(&self) -> Option<PyBddNode> {
-        self.0.mincut().map(PyBddNode)
     }
 
     pub fn _size(&self) -> (u64, u64, u64) {
@@ -169,16 +173,8 @@ impl PyBddNode {
         self.0.bdd_count(&ss)
     }
 
-    pub fn _zdd_count(&self, ss: Vec<bool>) -> u64 {
-        self.0.zdd_count(&ss)
-    }
-
     pub fn _bdd_extract(&self, ss: Vec<bool>) -> PyBddPath {
         PyBddPath::new(&self, ss.clone())
-    }
-
-    pub fn _zdd_extract(&self, ss: Vec<bool>) -> PyZddPath {
-        PyZddPath::new(&self, ss.clone())
     }
 }
 
@@ -186,13 +182,6 @@ impl PyBddNode {
 pub struct PyBddPath {
     bddnode: BddNode,
     bddpath: BddPath,
-    domain: Vec<bool>,
-}
-
-#[pyclass(unsendable)]
-pub struct PyZddPath {
-    bddnode: BddNode,
-    bddpath: ZddPath,
     domain: Vec<bool>,
 }
 
@@ -210,31 +199,6 @@ impl PyBddPath {
 
     fn __len__(&self) -> usize {
         self.bddnode.bdd_count(&self.domain) as usize
-    }
-
-    fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
-        slf
-    }
-
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<Vec<String>> {
-        slf.bddpath.next()
-    }
-}
-
-#[pymethods]
-impl PyZddPath {
-    #[new]
-    fn new(node: &PyBddNode, ss: Vec<bool>) -> Self {
-        let bddpath = node.0.zdd_extract(&ss);
-        PyZddPath {
-            bddnode: node.0.clone(),
-            bddpath,
-            domain: ss.clone(),
-        }
-    }
-
-    fn __len__(&self) -> usize {
-        self.bddnode.zdd_count(&self.domain) as usize
     }
 
     fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {

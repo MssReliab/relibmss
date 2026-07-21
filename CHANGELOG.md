@@ -1,3 +1,28 @@
+# v0.16.0
+
+- **Bug fix (correctness): `minpath`/`mincut` produced non-minimal sets for some monotone
+  functions** (engine relib-bss 0.9.0). E.g. `getbdd(x&y | z).minpath()` returned
+  `{x,y}, {y,z}, {z}` instead of the correct `{x,y}, {z}`. Simple gates were unaffected.
+  Fixed in the engine and verified exhaustively against brute force for every boolean
+  function of n ≤ 4 variables.
+- **`minpath()` / `mincut()` now return a genuine ZDD set family (`ZddNode`)** instead of a
+  `BddNode`. `ZddNode` supports the set algebra as methods and operators — `|` union,
+  `&` intersection, `-` set difference, `*` product, `/` quotient — plus `count()`,
+  `extract()`, `dot()`, `size()`. Set operations require both families to come from the
+  same `BSS`/`BDD` context (they share one internal ZDD forest); mixing contexts raises
+  `ValueError`. `None` is still returned for a non-monotone function; `dual()` still
+  returns a `BddNode`.
+- **Breaking**: code that treated a `minpath()`/`mincut()` result as a `BddNode` (e.g.
+  calling `.prob()` on it) must adapt; `.extract()` / `.count()` are unchanged.
+- **Breaking**: `BddNode.extract()` / `count()` no longer take a `type` argument (the vestigial
+  `type='zdd'` reading of a boolean BDD is gone). They enumerate / count the satisfying
+  assignments; for minimal path/cut *sets*, use `minpath()` / `mincut()` and the resulting
+  `ZddNode`.
+- **New: standalone ZDD** — `ms.ZDD()` builds and manipulates set families directly:
+  `empty()` (`∅`), `base()` (`{∅}`), `singleton(label)` (`{{label}}`), `from_sets([[...]])`,
+  then the `ZddNode` set algebra (`| & - * /`, `count`, `extract`). Standalone families are a
+  separate forest from `minpath()`/`mincut()` results; combining the two raises `ValueError`.
+
 # v0.15.0
 
 - **Added `BddNode.dual()` and `BddNode.mincut()`** (engine relib-bss 0.8.0). `dual()` is the

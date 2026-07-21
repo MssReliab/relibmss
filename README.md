@@ -24,8 +24,8 @@ node = bss.getbdd(top)               # convert to a BDD
 print(node.prob({'A': 0.1, 'B': 0.2, 'C': 0.3}))
 ```
 
-(A lower-level API — `ms.BDD()` / `ms.MDD()` — lets you build directly on nodes without the
-expression layer; see [Low-level BDD/MDD managers](#low-level-bddmdd-managers-advanced).)
+(A lower-level API — `ms.BDD()` / `ms.MDD()` / `ms.ZDD()` — lets you build directly on nodes
+without the expression layer; see [Standalone (low-level) managers](docs/standalone-managers.md).)
 
 ### Calculate the probability of a fault tree
 
@@ -158,7 +158,7 @@ node = bss.getbdd(top)
 
 # Enumerate the satisfying paths (as a list of sets)
 print('All paths which evaluate to one')
-for x in node.extract(type='bdd'):
+for x in node.extract():
     print(x)
 
 # Minimal path vectors of the structure function
@@ -183,6 +183,29 @@ node = bss.getbdd(A ^ B)     # xor: not monotone
 print(node.minpath())        # None
 print(node.mincut())         # None
 ```
+
+#### Set algebra on path/cut families
+
+`minpath()` and `mincut()` return a **`ZddNode`** — a genuine ZDD set family — which supports
+the set algebra as methods and operators: `|` union, `&` intersection, `-` set difference,
+`*` product, `/` quotient, plus `count()`, `extract()`, `dot()`.
+
+```python
+bss = ms.BSS()
+A, B, C = bss.defvar('A'), bss.defvar('B'), bss.defvar('C')
+
+p = bss.getbdd(A & B | C).minpath()   # { {C}, {A,B} }
+q = bss.getbdd(A | C).minpath()       # { {A}, {C} }
+
+print((p | q).count())                # union
+print(list((p & q).extract()))        # intersection -> [['C']]
+print(list((p - q).extract()))        # difference   -> [['A', 'B']]
+```
+
+Set operations require both families to come from the **same** `BSS` context (they share one
+internal ZDD forest); combining families from different contexts raises `ValueError`. To build
+set families from scratch, use the standalone `ms.ZDD()` manager — see
+[Standalone (low-level) managers](docs/standalone-managers.md).
 
 ### Draw a BDD
 
@@ -350,26 +373,10 @@ print(node.bmeas_interval(interval_prob))
 print(node.bmeas({'A': 0.5, 'B': 0.5, 'C': 0.5}))
 ```
 
-### Low-level BDD/MDD managers (advanced)
+### Low-level managers (advanced)
 
-`ms.BDD()` / `ms.MDD()` build **directly on nodes**, skipping the `BSS`/`MSS` expression
-layer. `defvar` returns a node, operators combine nodes, and the analysis methods
-(`prob`, `bmeas`, `minpath`, `extract`, `size`, `dot`, …) are the **same** as on a node
-returned by `getbdd`/`getmdd` — so every example above works by reading `bss.getbdd(top)` as
-a node you already hold.
-
-```python
-import relibmss as ms
-
-bdd = ms.BDD()                 # raw BDD manager (optionally ms.BDD(varorder))
-A = bdd.defvar('A')
-B = bdd.defvar('B')
-C = bdd.defvar('C')
-
-top = A & B | C                # `top` is already a BDD node
-print(top.prob({'A': 0.1, 'B': 0.2, 'C': 0.3}))
-print(top.minpath().extract())
-```
+`ms.BDD()`, `ms.MDD()`, and `ms.ZDD()` build **directly on nodes**, skipping the `BSS`/`MSS`
+expression layer. See [Standalone (low-level) managers](docs/standalone-managers.md).
 
 ### TODO for fault tree analysis
 

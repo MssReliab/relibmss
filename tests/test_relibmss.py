@@ -457,3 +457,76 @@ def test_mincut_dual():
     assert series.dual().dual().prob({"x": 0.3, "y": 0.4}) == series.prob({"x": 0.3, "y": 0.4})
     # Non-monotone -> mincut None.
     assert b.getbdd(x ^ y).mincut() is None
+
+
+def test_zdd_set_algebra():
+    b = ms.BSS()
+    x, y, z = b.defvar("x"), b.defvar("y"), b.defvar("z")
+
+    def sset(zn):
+        return sorted(map(sorted, zn.extract()))
+
+    # Regression for the minsol bug: minpath(x&y|z) is {x,y},{z} — the non-minimal
+    # {y,z} that older versions produced must be gone.
+    assert sset(b.getbdd(x & y | z).minpath()) == [["x", "y"], ["z"]]
+
+    a = b.getbdd(x & y | z).minpath()   # { {z}, {x,y} }
+    c = b.getbdd(x | z).minpath()       # { {x}, {z} }
+    assert isinstance(a, ms.ZddNode)
+    assert sset(a | c) == [["x"], ["x", "y"], ["z"]]       # union
+    assert sset(a & c) == [["z"]]                          # intersection
+    assert sset(a - c) == [["x", "y"]]                     # set difference
+    assert a.count() == 2 and (a | c).count() == 3
+
+    fx, fy = b.getbdd(x).minpath(), b.getbdd(y).minpath()
+    assert sset(fx * fy) == [["x", "y"]]                   # product
+    assert sset((fx * fy) / fy) == [["x"]]                 # quotient
+
+    # method forms agree with operators
+    assert sset(a.union(c)) == sset(a | c)
+    assert sset(a.intersect(c)) == sset(a & c)
+
+
+def test_zdd_cross_context_error():
+    b1 = ms.BSS(); x1 = b1.defvar("x")
+    b2 = ms.BSS(); x2 = b2.defvar("x")
+    a = b1.getbdd(x1).minpath()
+    d = b2.getbdd(x2).minpath()
+    with pytest.raises(ValueError):
+        _ = a | d
+
+
+def test_zdd_standalone():
+    z = ms.ZDD()
+
+    def sset(zn):
+        return sorted(map(sorted, zn.extract()))
+
+    assert z.empty().count() == 0
+    assert z.base().count() == 1 and sset(z.base()) == [[]]
+
+    a = z.from_sets([["x", "y"], ["z"]])          # { {x,y}, {z} }
+    b = z.singleton("x") | z.singleton("z")       # { {x}, {z} }
+    assert sset(a) == [["x", "y"], ["z"]]
+    assert sset(b) == [["x"], ["z"]]
+    assert sset(a | b) == [["x"], ["x", "y"], ["z"]]
+    assert sset(a & b) == [["z"]] and (a & b).count() == 1
+    assert sset(a - b) == [["x", "y"]]
+    assert sset(z.singleton("x") * z.singleton("y")) == [["x", "y"]]
+    assert isinstance(a, ms.ZddNode)
+
+
+def test_zdd_standalone_isolated():
+    # A standalone ZDD family and a minpath family live in different forests; combining
+    # them must raise, not silently produce garbage.
+    z = ms.ZDD()
+    a = z.from_sets([["x"]])
+    b = ms.BSS()
+    p, q = b.defvar("p"), b.defvar("q")
+    mp = b.getbdd(p & q).minpath()
+    with pytest.raises(ValueError):
+        _ = a | mp
+    # two families from different ms.ZDD() managers are also isolated
+    z2 = ms.ZDD()
+    with pytest.raises(ValueError):
+        _ = a | z2.singleton("x")
