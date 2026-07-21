@@ -559,6 +559,39 @@ print((a - b).count([1, 2]))           # size of the difference -> 2
 Set operations require both families to come from the **same** `MSS` context (they share one
 internal ZMDD forest); combining families from different contexts raises `ValueError`.
 
+### Importance analysis
+
+`bmeas(probability, values)` returns the **multi-state Birnbaum importance** of every variable
+for the success set `values`. For a variable with `M` states it returns `M-1` numbers — one per
+state boundary — where `D_j = P(φ∈values | var=j) − P(φ∈values | var=j−1)` is the importance of
+raising that component across the `j−1 → j` boundary (the multi-state generalization of the BSS
+Birnbaum measure, which is the binary case). Computed in one backward-differentiation pass.
+
+```python
+import relibmss as ms
+
+mss = ms.MSS()
+X = mss.defvar('X', 3)
+Y = mss.defvar('Y', 3)
+Z = mss.defvar('Z', 3)
+
+node = mss.getmdd(mss.Max([mss.Min([X, Y]), Z]))   # φ = max(min(X, Y), Z)
+prob = {'X': [0.2, 0.3, 0.5], 'Y': [0.5, 0.1, 0.4], 'Z': [0.25, 0.25, 0.5]}
+
+# success = performance level >= 1
+print(node.bmeas(prob, [1, 2]))
+# X -> [0.125, 0.0],  Y -> [0.2, 0.0],  Z -> [0.6, 0.0]   (each is [D_1, D_2])
+# e.g. D_{Y,1} = P(φ>=1 | Y=1) - P(φ>=1 | Y=0) = 0.95 - 0.75 = 0.20
+#   (the second entry is 0.0 here because raising a component from state 1 to 2
+#    never changes whether φ>=1)
+
+# Interval version: each per-state probability is a (lo, hi) bound
+interval_prob = {'X': [(0.2, 0.2), (0.3, 0.3), (0.5, 0.5)],
+                 'Y': [(0.5, 0.5), (0.1, 0.1), (0.4, 0.4)],
+                 'Z': [(0.25, 0.25), (0.25, 0.25), (0.5, 0.5)]}
+print(node.bmeas_interval(interval_prob, [1, 2]))
+```
+
 ## TODO
 
 - Add more examples

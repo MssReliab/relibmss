@@ -187,6 +187,34 @@ def test_mss_unknown_variable_raises():
         mss.getmdd(mss.const("undeclared"))
 
 
+def test_mss_bmeas_matches_pinned_prob():
+    # Multi-state Birnbaum importance: bmeas[var][d] == P(phi|var=d+1) - P(phi|var=d),
+    # each conditional computed by pinning `var` to a unit probability vector.
+    mss = ms.MSS()
+    X = mss.defvar("X", 3)
+    Y = mss.defvar("Y", 3)
+    Z = mss.defvar("Z", 3)
+    node = mss.getmdd(mss.Max([mss.Min([X, Y]), Z]))
+    prob = {"X": [0.2, 0.3, 0.5], "Y": [0.5, 0.1, 0.4], "Z": [0.25, 0.25, 0.5]}
+    ss = [1, 2]
+
+    def cond(var, j):
+        pinned = {k: v[:] for k, v in prob.items()}
+        e = [0.0, 0.0, 0.0]
+        e[j] = 1.0
+        pinned[var] = e
+        return node.prob(pinned, ss)
+
+    bm = node.bmeas(prob, ss)
+    assert set(bm) == {"X", "Y", "Z"}
+    for var, vec in bm.items():
+        assert len(vec) == 2  # M - 1 = 2 state boundaries
+        for d, g in enumerate(vec):
+            assert _close(g, cond(var, d + 1) - cond(var, d))
+    # spot value: D_{Y,1} = P(phi|Y=1) - P(phi|Y=0) for max(min(X,Y),Z) = 0.2
+    assert _close(bm["Y"][0], 0.2)
+
+
 def test_deep_expression_does_not_hit_recursion_limit():
     # And([...]) builds a left-leaning tree; the evaluator uses an explicit stack.
     bss = ms.BSS()

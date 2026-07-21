@@ -198,7 +198,23 @@ class MddNode:
     def prob_interval(self, probability, values):
         interval_probability = {k: [ms.Interval(u[0], u[1]) for u in v] for k, v in probability.items()}
         return self.node._prob_interval(interval_probability, values)
-    
+
+    def bmeas(self, probability, values):
+        """Multi-state Birnbaum importance of every variable for the success set ``values``.
+
+        Returns ``{var: [D_1, ..., D_{M-1}]}`` where ``M`` is the variable's state count and
+        ``D_j = P(phi in values | var = j) - P(phi in values | var = j-1)`` is the importance
+        of raising the component across the ``j-1 -> j`` state boundary (index ``d`` = the
+        transition ``d -> d+1``). For a binary variable this is the single classic Birnbaum
+        measure. ``probability`` maps each variable to its per-state probability vector."""
+        return self.node._bmeas(probability, values)
+
+    def bmeas_interval(self, probability, values):
+        """Interval-arithmetic version of :meth:`bmeas`; ``probability`` maps each variable to
+        a list of ``(lo, hi)`` per-state probability bounds."""
+        interval_probability = {k: [ms.Interval(u[0], u[1]) for u in v] for k, v in probability.items()}
+        return self.node._bmeas_interval(interval_probability, values)
+
     def minpath(self):
         """Minimal path vectors, as a genuine ZMDD set family (:class:`ZmddNode`) supporting
         label-wise ``&`` / ``-``, or ``None`` if the structure function is not coherent

@@ -1,9 +1,16 @@
-# Unreleased
+# v0.18.0
 
+- **New: multi-state Birnbaum importance — `MddNode.bmeas` / `bmeas_interval`** (engine
+  relib-mss 0.11.0). For a structure function and success set `values`, returns per variable
+  the adjacent-state differences `{var: [D_1, …, D_{M-1}]}` where
+  `D_j = P(φ∈values | var=j) − P(φ∈values | var=j−1)` (state count `M`, so `M-1` numbers) —
+  the multi-state generalization of the BSS Birnbaum measure, computed in one
+  backward-differentiation pass. Also exposed as the obsolete `MSS.bmeas` / `bmeas_interval`
+  context methods (mirroring `prob`). README gains an MSS "Importance analysis" example.
 - **Docs**: rewrote the MSS "minimal vector sets" set-algebra example in `README.md` to be
   self-contained with annotated, verified output (`max(min(X,Y),Z)` intersect/setdiff
   `min(X,Y)`), mirroring the BSS `ZddNode` example; described `ZmddNode` as the multi-state
-  analogue of `ZddNode` and noted the same-context (`ValueError`) constraint. Docs only.
+  analogue of `ZddNode` and noted the same-context (`ValueError`) constraint.
 
 # v0.17.0
 

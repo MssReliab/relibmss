@@ -176,6 +176,18 @@ impl PyMddNode {
         self.0.prob(&pv, &ss)
     }
 
+    pub fn _bmeas(&mut self, pv: HashMap<String, Vec<f64>>, ss: Vec<i32>) -> HashMap<String, Vec<f64>> {
+        self.0.bmeas(&pv, &ss)
+    }
+
+    pub fn _bmeas_interval(
+        &mut self,
+        pv: HashMap<String, Vec<Interval>>,
+        ss: Vec<i32>,
+    ) -> HashMap<String, Vec<Interval>> {
+        self.0.bmeas(&pv, &ss)
+    }
+
     pub fn _mdd_count(&self, ss: Vec<i32>) -> u64 {
         let ss = ss.iter().map(|x| *x).collect::<HashSet<_>>();
         self.0.mdd_count(&ss)

@@ -249,7 +249,17 @@ class Context:
         warnings.warn("This function is obsolete. Use the method of MddNode directly.", category=DeprecationWarning)
         top = self.getmdd(arg)
         return top.prob_interval(probability, values)
-    
+
+    def bmeas(self, arg: _Expression, probability: dict, values: list):
+        warnings.warn("This function is obsolete. Use the method of MddNode directly.", category=DeprecationWarning)
+        top = self.getmdd(arg)
+        return top.bmeas(probability, values)
+
+    def bmeas_interval(self, arg: _Expression, probability: dict, values: list):
+        warnings.warn("This function is obsolete. Use the method of MddNode directly.", category=DeprecationWarning)
+        top = self.getmdd(arg)
+        return top.bmeas_interval(probability, values)
+
     def minpath(self, arg: _Expression):
         top = self.getmdd(arg)
         return top.minpath()
