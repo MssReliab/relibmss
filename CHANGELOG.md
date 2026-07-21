@@ -1,3 +1,14 @@
+# v0.19.0
+
+- **New: multi-state minimal cut vectors — `MddNode.mincut()`** (engine relib-mss 0.12.0).
+  Returns the minimal cut vectors of a coherent structure function as a `ZmddNode` (or `None` if
+  non-coherent), the dual of `minpath()`. A cut vector lists the components pushed **below** their
+  max state (an unlisted component stays at max); `extract(values)` / `count(values)` select the
+  resulting performance level in the structure function's own scale (so a boolean fault-tree
+  failure is read with `extract([0])`). Computed **directly** by the engine — the expensive
+  multi-state dual MDD is never materialized. Also exposed as the obsolete `MSS.mincut` context
+  wrapper. README gains a cut-vector example.
+
 # v0.18.1
 
 - **Docs**: document `bmeas_interval` semantics — a guaranteed but *conservative* interval

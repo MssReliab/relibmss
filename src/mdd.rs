@@ -24,6 +24,12 @@ impl PyMddMgr {
         self.0.minpath(&node.0).map(PyZmddNode)
     }
 
+    /// Minimal cut vectors of `node` as a genuine ZMDD family, or `None` if the structure
+    /// function is not coherent. Computed directly (no dual MDD).
+    pub fn _mincut(&self, node: &PyMddNode) -> Option<PyZmddNode> {
+        self.0.mincut(&node.0).map(PyZmddNode)
+    }
+
     pub fn _size(&self) -> (usize, usize, usize, usize) {
         self.0.size()
     }

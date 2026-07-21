@@ -215,6 +215,35 @@ def test_mss_bmeas_matches_pinned_prob():
     assert _close(bm["Y"][0], 0.2)
 
 
+def test_mss_mincut():
+    # Minimal cut vectors: mincut().extract([v]) lists components pushed below max (unlisted
+    # component stays at max) that hold phi down to level v, in phi's own value scale.
+    mss = ms.MSS()
+    X = mss.defvar("X", 3)
+    Y = mss.defvar("Y", 3)
+    Z = mss.defvar("Z", 3)
+
+    def cuts(node, v):
+        return sorted(sorted(d.items()) for d in node.mincut().extract([v]))
+
+    # phi = max(min(X, Y), Z): to fail (phi=0) need Z=0 AND (X=0 or Y=0)
+    phi = mss.getmdd(mss.Max([mss.Min([X, Y]), Z]))
+    assert cuts(phi, 0) == [[("X", 0), ("Z", 0)], [("Y", 0), ("Z", 0)]]
+    assert cuts(phi, 1) == [[("X", 1), ("Z", 1)], [("Y", 1), ("Z", 1)]]
+
+    # series min(X,Y,Z): any single component dropped is a cut
+    series = mss.getmdd(mss.Min([X, Y, Z]))
+    assert cuts(series, 0) == [[("X", 0)], [("Y", 0)], [("Z", 0)]]
+    assert cuts(series, 1) == [[("X", 1)], [("Y", 1)], [("Z", 1)]]
+
+    # parallel max(X,Y,Z): all components must drop together
+    parallel = mss.getmdd(mss.Max([X, Y, Z]))
+    assert cuts(parallel, 0) == [[("X", 0), ("Y", 0), ("Z", 0)]]
+
+    # non-coherent -> None
+    assert mss.getmdd(X - Y).mincut() is None
+
+
 def test_deep_expression_does_not_hit_recursion_limit():
     # And([...]) builds a left-leaning tree; the evaluator uses an explicit stack.
     bss = ms.BSS()

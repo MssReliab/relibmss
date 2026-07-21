@@ -263,3 +263,7 @@ class Context:
     def minpath(self, arg: _Expression):
         top = self.getmdd(arg)
         return top.minpath()
+
+    def mincut(self, arg: _Expression):
+        top = self.getmdd(arg)
+        return top.mincut()

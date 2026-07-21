@@ -534,6 +534,23 @@ for path in s.extract([1, 2, 3]):
     print(path)
 ```
 
+`mincut()` is the dual — the minimal **cut** vectors (the smallest deviations *below* max that
+hold the system down to a level). A cut vector lists only the components pushed below their max
+state (an unlisted component stays at max), and `extract(values)` selects the resulting
+performance level in the structure function's own scale:
+
+```python
+mss = ms.MSS()
+X, Y, Z = mss.defvar('X', 3), mss.defvar('Y', 3), mss.defvar('Z', 3)
+phi = mss.getmdd(mss.Max([mss.Min([X, Y]), Z]))   # φ = max(min(X, Y), Z)
+
+# to hold φ down to level 0 you need Z=0 AND (X=0 or Y=0):
+print(list(phi.mincut().extract([0])))   # -> the cuts {X=0, Z=0} and {Y=0, Z=0}
+```
+
+It is computed directly (the engine never builds the expensive multi-state dual MDD) and, like
+`minpath`, returns a `ZmddNode` (`None` if the function is not coherent).
+
 `minpath` requires a **coherent (monotone)** structure function; it returns `None` when the
 function is not coherent. The result is a **`ZmddNode`** — the multi-state analogue of the BSS
 `ZddNode`: a family of minimal path **vectors** (each `{var: state}`, sparse, so only non-zero

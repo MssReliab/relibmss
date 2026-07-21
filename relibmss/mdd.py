@@ -234,3 +234,15 @@ class MddNode:
         (monotone)."""
         r = self.mdd._minpath(self.node)
         return None if r is None else ZmddNode(self.mdd, r)
+
+    def mincut(self):
+        """Minimal cut vectors, as a genuine ZMDD set family (:class:`ZmddNode`), or ``None``
+        if the structure function is not coherent (monotone).
+
+        A cut vector lists the components pushed **below** their max state (an unlisted
+        component stays at max); ``extract(values)`` / ``count(values)`` select the resulting
+        performance level in phi's own scale, so a fault-tree failure is read with
+        ``extract([0])`` (mirroring ``minpath`` paths, which are read with ``[1]``). Computed
+        directly by the engine's maxsol pass, without ever building the (expensive) dual MDD."""
+        r = self.mdd._mincut(self.node)
+        return None if r is None else ZmddNode(self.mdd, r)
