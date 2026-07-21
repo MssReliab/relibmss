@@ -125,15 +125,24 @@ mdd = ms.MDD(mss.get_varorder())   # likewise for an MDD
 
 ### Obtain the minimal path / cut vectors
 
-For a structure function `φ`, `minpath()` returns its **minimal path vectors** (minimal
-sets of components whose functioning makes the system function) and `mincut()` returns its
-**minimal cut vectors** (minimal sets whose failure makes the system fail). They are dual:
-`mincut()` is `dual().minpath()`, where `dual()` is the dual structure function
-`φ^D(x) = ~φ(~x)`.
+For a structure function `φ`, `minpath()` returns the **prime implicants of `φ`** and
+`mincut()` returns the prime implicants of its dual `φ^D`. They are dual: `mincut()` is
+`dual().minpath()`, where `dual()` is the dual structure function `φ^D(x) = ~φ(~x)`.
 
-Whether these coincide with "minimal path sets" or "minimal cut sets" in the reliability
-sense depends only on how you framed `φ` — as a success function or as a failure (fault
-tree) function.
+> **Which is "path" and which is "cut" depends on how you modeled `φ`.** The method names
+> refer to `φ`'s own implicants; translate them to reliability "path/cut" through your
+> framing:
+>
+> - **Success function** (`φ = 1` ⟺ the system functions, variable `= 1` ⟺ that component
+>   functions): `minpath()` gives the minimal **path** sets, `mincut()` the minimal **cut**
+>   sets — matching the method names.
+> - **Fault tree / failure function** (`φ = 1` ⟺ the top event / system failure, variable
+>   `= 1` ⟺ that component fails): the two readings **swap** — `minpath()` gives the system's
+>   minimal **cut** sets (smallest failure combinations causing the top event), and
+>   `mincut()` gives the minimal **path** sets.
+>
+> The fault-tree examples in this README are failure functions, so **their minimal cut sets
+> are `minpath()`** — not `mincut()`.
 
 ```python
 import relibmss as ms
@@ -196,6 +205,10 @@ Source(source)
 ```
 
 ### An example of a large fault tree
+
+`top` here is a **fault tree** (a failure function: `top = 1` is the top event, each `c[i] = 1`
+is a component failure), so `minpath()` returns the system's **minimal cut sets** — see the
+framing note under [Obtain the minimal path / cut vectors](#obtain-the-minimal-path--cut-vectors).
 
 ```python
 ## Computational time may be long (about 1 minute)
@@ -293,13 +306,13 @@ top = g126 & g138 & g144
 bdd = bss.getbdd(top)
 print(bdd.size())      # number of nodes in the BDD
 
-s = bdd.minpath()      # minimal path vectors of the structure function
-min_path = s.extract()
-print('The number of minimal path sets:', len(min_path))
+s = bdd.minpath()      # this is a fault tree → minpath() = the system's minimal CUT sets
+min_cut = s.extract()
+print('The number of minimal cut sets:', len(min_cut))
 
-print('Example: 100 minimal path sets')
+print('Example: 100 minimal cut sets')
 from itertools import islice
-for x in islice(min_path, 0, 100):
+for x in islice(min_cut, 0, 100):
     print(x)
 ```
 

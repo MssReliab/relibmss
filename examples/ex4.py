@@ -94,13 +94,13 @@ top = g126 & g138 & g144
 bdd = bss.getbdd(top)
 print(bdd.size()) # The number of nodes in the BDD
 
-s = bdd.minpath() # Obtain the minimal path vectors (minimal cut sets) from the BDD directly
-min_path = s.extract()
-print('The number of minimal path sets:', len(min_path))
+s = bdd.minpath() # Fault tree: minpath() gives the system's minimal cut sets
+min_cut = s.extract()
+print('The number of minimal cut sets:', len(min_cut))
 
-print('Example: 100 minimal path sets')
+print('Example: 100 minimal cut sets')
 from itertools import islice
-for x in islice(min_path, 0, 100):
+for x in islice(min_cut, 0, 100):
     print(x)
 
 ## An example of the direct use of MDD
@@ -197,12 +197,12 @@ top = g126 & g138 & g144
 
 print(top.size()) # The number of nodes in the BDD
 
-s = top.minpath() # Obtain the minimal path vectors (minimal cut sets) from the BDD directly
-min_path = s.extract()
-print('The number of minimal path sets:', len(min_path))
+s = top.minpath() # Fault tree: minpath() gives the system's minimal cut sets
+min_cut = s.extract()
+print('The number of minimal cut sets:', len(min_cut))
 
-print('Example: 100 minimal path sets')
+print('Example: 100 minimal cut sets')
 from itertools import islice
-for x in islice(min_path, 0, 100):
+for x in islice(min_cut, 0, 100):
     print(x)
 
