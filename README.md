@@ -528,15 +528,32 @@ sx = gate1(mss, B, C)
 ss = gate2(mss, A, sx)
 
 s = mss.getmdd(ss).minpath()   # a ZmddNode: family of minimal path vectors
-# extract(values) enumerates the vectors reaching a performance label in `values`
-# (sparse: only non-zero components are listed)
+# extract(values) enumerates the vectors filed under a performance label in `values`
+# (dense: every variable is listed, unrecorded components at 0)
 for path in s.extract([1, 2, 3]):
     print(path)
 ```
 
+> **`extract(values)` selects strata, not levels.** Each vector is filed under the label equal
+> to **its own** performance `φ(x)`. The classical "minimal path vectors *to level* `v`"
+> (`minimal{x : φ(x) >= v}`) and "minimal cut vectors *to level* `v`"
+> (`maximal{x : φ(x) <= v}`) are `extract_level(v)`. The two agree at the lowest and highest
+> labels but differ in between — in the example above `A = 0` alone drives `φ` to 0, so
+> `{A:0, B:2, C:2}` sits in stratum 0 while still being a genuine cut vector for levels 1 and 2:
+>
+> ```python
+> cut = mss.getmdd(ss).mincut()
+> cut.extract([1])        # stratum 1 -> {A:1,B:0,C:2}, {A:1,B:2,C:0}
+> cut.extract_level(1)    # level 1   -> the two above, plus {A:0,B:2,C:2}
+> ```
+>
+> `labels()` lists the labels a family stratifies over and `is_cut()` says which kind it is.
+> Every family also contains the **baseline member** — the all-0 vector for a path family, the
+> all-max vector for a cut family — which is a correct but trivial vector, usually skipped.
+
 `mincut()` is the dual — the minimal **cut** vectors (the smallest deviations *below* max that
-hold the system down to a level). A cut vector lists only the components pushed below their max
-state (an unlisted component stays at max), and `extract(values)` selects the resulting
+hold the system down to a level). A cut vector is reported dense, with the components it does
+not push down sitting at their max state, and `extract(values)` selects the resulting
 performance level in the structure function's own scale:
 
 ```python
@@ -545,7 +562,8 @@ X, Y, Z = mss.defvar('X', 3), mss.defvar('Y', 3), mss.defvar('Z', 3)
 phi = mss.getmdd(mss.Max([mss.Min([X, Y]), Z]))   # φ = max(min(X, Y), Z)
 
 # to hold φ down to level 0 you need Z=0 AND (X=0 or Y=0):
-print(list(phi.mincut().extract([0])))   # -> the cuts {X=0, Z=0} and {Y=0, Z=0}
+print(list(phi.mincut().extract([0])))
+# -> [{'X': 0, 'Y': 2, 'Z': 0}, {'X': 2, 'Y': 0, 'Z': 0}]   (unrecorded components at max)
 ```
 
 It is computed directly (the engine never builds the expensive multi-state dual MDD) and, like
@@ -553,9 +571,9 @@ It is computed directly (the engine never builds the expensive multi-state dual 
 
 `minpath` requires a **coherent (monotone)** structure function; it returns `None` when the
 function is not coherent. The result is a **`ZmddNode`** — the multi-state analogue of the BSS
-`ZddNode`: a family of minimal path **vectors** (each `{var: state}`, sparse, so only non-zero
-components are listed) stratified by the performance label they reach. It supports label-wise
-set operations — `&` intersection, `-` set difference — plus `count(values)` / `extract(values)`:
+`ZddNode`: a family of minimal path **vectors** (each a dense `{var: state}` dict) stratified by
+the performance label they reach. It supports label-wise set operations — `&` intersection,
+`-` set difference — plus `count(values)` / `extract(values)` / `extract_level(level)`:
 
 ```python
 mss = ms.MSS()
@@ -568,8 +586,10 @@ a = mss.getmdd(mss.Max([mss.Min([X, Y]), Z])).minpath()
 # min(X, Y): minimal path vectors {X=1,Y=1}, {X=2,Y=2}
 b = mss.getmdd(mss.Min([X, Y])).minpath()
 
-print(list((a & b).extract([1, 2])))   # intersection -> [{'X': 1, 'Y': 1}, {'X': 2, 'Y': 2}]
-print(list((a - b).extract([1, 2])))   # difference   -> [{'Z': 1}, {'Z': 2}]
+print(list((a & b).extract([1, 2])))
+# intersection -> [{'X': 1, 'Y': 1, 'Z': 0}, {'X': 2, 'Y': 2, 'Z': 0}]
+print(list((a - b).extract([1, 2])))
+# difference   -> [{'X': 0, 'Y': 0, 'Z': 1}, {'X': 0, 'Y': 0, 'Z': 2}]
 print((a - b).count([1, 2]))           # size of the difference -> 2
 ```
 

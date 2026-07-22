@@ -1,3 +1,26 @@
+# v0.21.0
+
+- **Breaking: `ZmddNode.extract(values)` now yields dense vectors** (engine relib-mss 0.14.0).
+  Every variable of the structure function is present, with the components the diagram does not
+  record filled in at their baseline — `0` for a path family, the max state for a cut family.
+  The baseline rule flips between the two kinds, so the old sparse output could not be read
+  without knowing which family produced it.
+- **New: `ZmddNode.extract_level(level)`** — the **classical** minimal path / cut vectors at a
+  level: `minimal{x: phi(x) >= level}` for a path family, `maximal{x: phi(x) <= level}` for a
+  cut family. This is *not* what `extract([level])` returns: the family files each vector under
+  the label equal to its **own** `phi(x)`, so `extract([v])` is the `phi(x) == v` stratum. The
+  two agree at the lowest and highest labels but differ in between — a cut vector with
+  `phi(x) < v` can still be maximal within `{x: phi(x) <= v}` while living in a lower stratum.
+  The previous documentation described `extract` itself as the `<= v` reading, which was wrong.
+- **New: `ZmddNode.labels()` / `is_cut()`** — the labels the family stratifies over, and whether
+  it is a cut or a path family.
+- **Fixed: the baseline member is now always present** (the all-0 vector for a path family, the
+  all-max vector for a cut family). Families built from a boolean structure function used to
+  drop it while value-forest families kept it. It is a correct but trivial vector, so callers
+  usually skip it.
+- BSS (`ZddNode`) is unaffected: with a two-valued structure function the stratum and level
+  readings coincide identically, and the set representation is unchanged.
+
 # v0.20.1
 
 - **`ZddNode.dot()` / `ZmddNode.dot()`: the empty-family terminal is no longer drawn**

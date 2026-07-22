@@ -216,8 +216,8 @@ def test_mss_bmeas_matches_pinned_prob():
 
 
 def test_mss_mincut():
-    # Minimal cut vectors: mincut().extract([v]) lists components pushed below max (unlisted
-    # component stays at max) that hold phi down to level v, in phi's own value scale.
+    # Minimal cut vectors: mincut().extract([v]) is the stratum whose phi(x) is exactly v.
+    # Vectors are dense, with the components not pushed down at their max state.
     mss = ms.MSS()
     X = mss.defvar("X", 3)
     Y = mss.defvar("Y", 3)
@@ -228,13 +228,22 @@ def test_mss_mincut():
 
     # phi = max(min(X, Y), Z): to fail (phi=0) need Z=0 AND (X=0 or Y=0)
     phi = mss.getmdd(mss.Max([mss.Min([X, Y]), Z]))
-    assert cuts(phi, 0) == [[("X", 0), ("Z", 0)], [("Y", 0), ("Z", 0)]]
-    assert cuts(phi, 1) == [[("X", 1), ("Z", 1)], [("Y", 1), ("Z", 1)]]
+    assert cuts(phi, 0) == [
+        [("X", 0), ("Y", 2), ("Z", 0)],
+        [("X", 2), ("Y", 0), ("Z", 0)],
+    ]
+    assert cuts(phi, 1) == [
+        [("X", 1), ("Y", 2), ("Z", 1)],
+        [("X", 2), ("Y", 1), ("Z", 1)],
+    ]
 
     # series min(X,Y,Z): any single component dropped is a cut
     series = mss.getmdd(mss.Min([X, Y, Z]))
-    assert cuts(series, 0) == [[("X", 0)], [("Y", 0)], [("Z", 0)]]
-    assert cuts(series, 1) == [[("X", 1)], [("Y", 1)], [("Z", 1)]]
+    assert cuts(series, 0) == [
+        [("X", 0), ("Y", 2), ("Z", 2)],
+        [("X", 2), ("Y", 0), ("Z", 2)],
+        [("X", 2), ("Y", 2), ("Z", 0)],
+    ]
 
     # parallel max(X,Y,Z): all components must drop together
     parallel = mss.getmdd(mss.Max([X, Y, Z]))
@@ -242,6 +251,58 @@ def test_mss_mincut():
 
     # non-coherent -> None
     assert mss.getmdd(X - Y).mincut() is None
+
+
+def test_zmdd_strata_vs_levels():
+    # extract([v]) is the stratum whose phi(x) is exactly v; extract_level(v) is the classical
+    # maximal{x: phi(x) <= v} (cuts) / minimal{x: phi(x) >= v} (paths). They differ in between:
+    # here A=0 alone drives phi to 0, so {A:0,B:2,C:2} lives in stratum 0 yet is still a cut
+    # vector for levels 1 and 2.
+    def gate1(mss, x, y):
+        return mss.switch([
+            mss.case(cond=mss.And([x == 0, y == 0]), then=0),
+            mss.case(cond=mss.Or([x == 0, y == 0]), then=1),
+            mss.case(cond=mss.Or([x == 2, y == 2]), then=3),
+            mss.case(then=2),
+        ])
+
+    def gate2(mss, x, y):
+        return mss.switch([mss.case(cond=x == 0, then=0), mss.case(then=y)])
+
+    mss = ms.MSS()
+    A = mss.defvar("A", 2)
+    B = mss.defvar("B", 3)
+    C = mss.defvar("C", 3)
+    node = mss.getmdd(gate2(mss, A, gate1(mss, B, C)))
+
+    cut = node.mincut()
+    assert cut.is_cut() is True
+    assert cut.labels() == [0, 1, 2, 3]
+
+    def norm(vectors):
+        return sorted(sorted(d.items()) for d in vectors)
+
+    stratum1 = norm(cut.extract([1]))
+    assert stratum1 == [
+        [("A", 1), ("B", 0), ("C", 2)],
+        [("A", 1), ("B", 2), ("C", 0)],
+    ]
+    # the level picks up (0,2,2) from stratum 0
+    assert norm(cut.extract_level(1)) == sorted(
+        stratum1 + [[("A", 0), ("B", 2), ("C", 2)]]
+    )
+    assert norm(cut.extract_level(2)) == sorted(
+        stratum1 + [[("A", 0), ("B", 2), ("C", 2)], [("A", 1), ("B", 1), ("C", 1)]]
+    )
+
+    # the extreme labels agree, and carry the (trivial but correct) baseline member
+    assert norm(cut.extract([0])) == norm(cut.extract_level(0))
+    assert norm(cut.extract([3])) == [[("A", 1), ("B", 2), ("C", 2)]]
+
+    path = node.minpath()
+    assert path.is_cut() is False
+    assert norm(path.extract([0])) == [[("A", 0), ("B", 0), ("C", 0)]]  # baseline member
+    assert norm(path.extract([3])) == norm(path.extract_level(3))
 
 
 def test_zmdd_dot_and_extract_len():
@@ -626,12 +687,18 @@ def test_zmdd_set_algebra():
     def sset(zn):
         return sorted(tuple(sorted(d.items())) for d in zn.extract([1, 2]))
 
-    a = m.getmdd(m.Max([m.Min([X, Y]), Z])).minpath()   # {z=1},{z=2},{x=1,y=1},{x=2,y=2}
-    b = m.getmdd(m.Min([X, Y])).minpath()                # {x=1,y=1},{x=2,y=2}
+    a = m.getmdd(m.Max([m.Min([X, Y]), Z])).minpath()   # {Z=1},{Z=2},{X=1,Y=1},{X=2,Y=2}
+    b = m.getmdd(m.Min([X, Y])).minpath()                # {X=1,Y=1},{X=2,Y=2}
     assert isinstance(a, ms.ZmddNode)
-    # label-wise intersection / difference
-    assert sset(a & b) == [(('X', 1), ('Y', 1)), (('X', 2), ('Y', 2))]
-    assert sset(a - b) == [(('Z', 1),), (('Z', 2),)]
+    # label-wise intersection / difference (vectors are dense: unlisted components are 0)
+    assert sset(a & b) == [
+        (('X', 1), ('Y', 1), ('Z', 0)),
+        (('X', 2), ('Y', 2), ('Z', 0)),
+    ]
+    assert sset(a - b) == [
+        (('X', 0), ('Y', 0), ('Z', 1)),
+        (('X', 0), ('Y', 0), ('Z', 2)),
+    ]
     assert (a & b).count([1, 2]) == 2 and (a - b).count([1, 2]) == 2
     # method forms agree
     assert sset(a.intersect(b)) == sset(a & b)

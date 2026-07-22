@@ -34,6 +34,18 @@ impl PyZmddNode {
     pub fn _dot(&self) -> String {
         self.0.dot()
     }
+
+    pub fn _labels(&self) -> Vec<i32> {
+        self.0.labels()
+    }
+
+    pub fn _is_cut(&self) -> bool {
+        self.0.is_cut()
+    }
+
+    pub fn _extract_level(&self, level: i32) -> Vec<HashMap<String, usize>> {
+        self.0.extract_level(level)
+    }
 }
 
 #[pyclass(unsendable)]
