@@ -53,6 +53,13 @@ probint = {'A': (0.1, 0.2), 'B': (0.2, 0.3), 'C': (0.3, 0.4)}
 print(node.prob_interval(probint))
 ```
 
+> **`prob` assumes the events are s-independent.** The probability of each variable is
+> multiplied along the paths of the diagram, so a dependence between two events is not
+> captured by giving them marginal probabilities. See
+> [Dependent events (common-cause failures)](#dependent-events-common-cause-failures) for how
+> to model dependence explicitly — the same applies to `prob_interval` and `bmeas`, and to the
+> multi-state side.
+
 ### Boolean operators
 
 In addition to `&` (AND) and `|` (OR), events support `~` (NOT) and `^` (XOR).
@@ -637,6 +644,60 @@ enclosure — interval arithmetic's dependency problem, together with the differ
 bounds (the interval can even straddle 0 when the true value has a definite sign). As with
 `prob_interval`, the constraint `sum_j p[var][j] == 1` is **not** enforced — the per-state
 bounds are treated independently.
+
+## Dependent events (common-cause failures)
+
+`prob` multiplies per-variable probabilities along the diagram, so it assumes the events are
+**s-independent**. Dependence is expressed by **modelling its cause explicitly**: introduce a
+variable for the common cause and make the affected components functions of it. The components
+are then conditionally independent given that variable, which is exactly what the diagram
+computes — it evaluates `Σ_z P(Z = z) · P(system | Z = z)` on its own, with no extra API.
+
+```python
+import relibmss as ms
+
+# A and B share a common cause Z: when Z fails, both fail.
+#   A_eff = Z & A_own,  B_eff = Z & B_own
+bss = ms.BSS()
+Z, A_own, B_own = bss.defvar('Z'), bss.defvar('A_own'), bss.defvar('B_own')
+parallel = bss.getbdd((Z & A_own) | (Z & B_own))
+
+p = parallel.prob({'Z': 0.9, 'A_own': 0.8, 'B_own': 0.7})
+print(p)                       # 0.8460000000000001, i.e. 0.9 * (1 - 0.2 * 0.3)
+```
+
+Feeding the two **marginal** probabilities to an independent model instead
+(`P(A_eff) = 0.9 * 0.8 = 0.72`, `P(B_eff) = 0.9 * 0.7 = 0.63`) gives
+`1 - 0.28 * 0.37 = 0.8964` — optimistic by 5 points, because it ignores that A and B fail
+together.
+
+The multi-state side works the same way. Here `Z = 0` drags both components down to state 0:
+
+```python
+import relibmss as ms
+
+mss = ms.MSS()
+Z = mss.defvar('Z', 2)
+A_own, B_own = mss.defvar('A_own', 3), mss.defvar('B_own', 3)
+A_eff = mss.switch([mss.case(cond=Z == 0, then=0), mss.case(then=A_own)])
+B_eff = mss.switch([mss.case(cond=Z == 0, then=0), mss.case(then=B_own)])
+node = mss.getmdd(mss.Max([A_eff, B_eff]))       # parallel: performance = max
+
+prob = {'Z': [0.1, 0.9], 'A_own': [0.2, 0.3, 0.5], 'B_own': [0.3, 0.2, 0.5]}
+print(node.prob(prob, [2]))    # 0.675   (independent marginals would give 0.6975)
+print(node.prob(prob, [1, 2])) # 0.8460000000000001
+```
+
+`bmeas` inherits the same treatment — with the common cause modelled as a variable it also
+reports the importance *of that common cause*. Note, though, that Birnbaum importance is a
+derivative `∂R/∂p_i`, so it presumes each `p_i` can be moved on its own; between genuinely
+dependent components that premise does not hold, and the number should be read as the
+importance of the modelled variables, not of the correlated events.
+
+> Minimal path / cut vectors do **not** help here: they are a structural property of the
+> structure function and are the same whether or not the components are dependent. What
+> dependence changes is how the probability of the family is computed, so `minpath()` /
+> `mincut()` are not a route around the independence assumption.
 
 ## TODO
 

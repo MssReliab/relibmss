@@ -1,3 +1,21 @@
+# Unreleased
+
+- **Docs: the independence assumption is now stated.** `prob` / `prob_interval` / `bmeas`
+  multiply per-variable probabilities along the diagram and therefore assume the components
+  are **s-independent** — previously this was only mentioned in passing for `bmeas`. Added to
+  the docstrings of those methods on both `BddNode` and `MddNode`.
+- **Docs: new README section "Dependent events (common-cause failures)"** showing how to model
+  dependence with the current API: make the common cause an explicit variable, which leaves the
+  components conditionally independent, and the diagram then evaluates
+  `Σ_z P(Z=z)·P(system|Z=z)` by itself. Worked BSS and MSS examples with verified numbers
+  (0.846 vs 0.8964 for the binary parallel system; 0.675 vs 0.6975 multi-state). Also notes
+  that `minpath()`/`mincut()` are *not* a route around the assumption: minimal vectors are a
+  structural property and are the same whether or not the components are dependent.
+- `bmeas` docstring notes that a Birnbaum measure is a derivative `dR/dp_i`, so it presumes each
+  probability can be varied on its own — a premise that fails between dependent components.
+- New test `test_ccf_conditional_independence` pinning both README examples against their
+  closed-form values.
+
 # v0.21.0
 
 - **Breaking: `ZmddNode.extract(values)` now yields dense vectors** (engine relib-mss 0.14.0).

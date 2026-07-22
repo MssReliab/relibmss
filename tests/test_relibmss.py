@@ -330,6 +330,34 @@ def test_zmdd_dot_and_extract_len():
         assert 'label="%s"' % label in dot
 
 
+def test_ccf_conditional_independence():
+    # `prob` assumes s-independent components; dependence is modelled by making the common
+    # cause an explicit variable, which leaves the components conditionally independent.
+    # This pins the README's "Dependent events (common-cause failures)" examples.
+    bss = ms.BSS()
+    Z, A_own, B_own = bss.defvar("Z"), bss.defvar("A_own"), bss.defvar("B_own")
+    parallel = bss.getbdd((Z & A_own) | (Z & B_own))
+    p = parallel.prob({"Z": 0.9, "A_own": 0.8, "B_own": 0.7})
+    assert _close(p, 0.9 * (1 - 0.2 * 0.3))          # 0.846, the correlated answer
+    # feeding the marginals to an independent model overstates it
+    assert _close(1 - (1 - 0.9 * 0.8) * (1 - 0.9 * 0.7), 0.8964)
+
+    mss = ms.MSS()
+    Zm = mss.defvar("Z", 2)
+    A2, B2 = mss.defvar("A_own", 3), mss.defvar("B_own", 3)
+    A_eff = mss.switch([mss.case(cond=Zm == 0, then=0), mss.case(then=A2)])
+    B_eff = mss.switch([mss.case(cond=Zm == 0, then=0), mss.case(then=B2)])
+    node = mss.getmdd(mss.Max([A_eff, B_eff]))
+    prob = {"Z": [0.1, 0.9], "A_own": [0.2, 0.3, 0.5], "B_own": [0.3, 0.2, 0.5]}
+    # exact: P(Z=1) * P(max(A_own, B_own) in values)
+    pa, pb = prob["A_own"], prob["B_own"]
+    for values in ([2], [1, 2]):
+        exact = 0.9 * sum(
+            pa[i] * pb[j] for i in range(3) for j in range(3) if max(i, j) in values
+        )
+        assert _close(node.prob(prob, values), exact)
+
+
 def test_deep_expression_does_not_hit_recursion_limit():
     # And([...]) builds a left-leaning tree; the evaluator uses an explicit stack.
     bss = ms.BSS()

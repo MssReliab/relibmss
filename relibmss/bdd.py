@@ -169,11 +169,23 @@ class BddNode:
         return self.node._bdd_extract(values)
 
     def prob(self, probability, values=None):
+        """Probability that the structure function takes a value in ``values``.
+
+        Components are assumed **s-independent**: the probability of each variable is
+        multiplied along the paths of the diagram. To model dependence, introduce a variable
+        for the common cause and make the affected components functions of it -- see
+        "Dependent events (common-cause failures)" in the README."""
         if values is None:
             values = [True]
         return self.node._prob(probability, values)
 
     def prob_interval(self, probability, values=None):
+        """Interval-arithmetic version of :meth:`prob`.
+
+        Components are assumed **s-independent**: the probability of each variable is
+        multiplied along the paths of the diagram. To model dependence, introduce a variable
+        for the common cause and make the affected components functions of it -- see
+        "Dependent events (common-cause failures)" in the README."""
         if values is None:
             values = [True]
         interval_probability = {k: ms.Interval(v[0], v[1]) for k, v in probability.items()}
@@ -204,11 +216,23 @@ class BddNode:
         return None if r is None else ZddNode(self.bdd, r)
 
     def bmeas(self, probability, values=None):
+        """Birnbaum importance of every event for the success set ``values``.
+
+        Components are assumed **s-independent**: the probability of each variable is
+        multiplied along the paths of the diagram. To model dependence, introduce a variable
+        for the common cause and make the affected components functions of it -- see
+        "Dependent events (common-cause failures)" in the README.""" 
         if values is None:
             values = [True]
         return self.node._bmeas(probability, values)
 
     def bmeas_interval(self, probability, values=None):
+        """Interval-arithmetic version of :meth:`bmeas`.
+
+        Components are assumed **s-independent**: the probability of each variable is
+        multiplied along the paths of the diagram. To model dependence, introduce a variable
+        for the common cause and make the affected components functions of it -- see
+        "Dependent events (common-cause failures)" in the README."""
         if values is None:
             values = [True]
         interval_probability = {k: ms.Interval(v[0], v[1]) for k, v in probability.items()}

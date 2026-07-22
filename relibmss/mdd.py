@@ -193,9 +193,21 @@ class MddNode:
         return self.node._mdd_extract(values)
     
     def prob(self, probability, values):
+        """Probability that the structure function takes a performance value in ``values``.
+
+        Components are assumed **s-independent**: the probability of each variable is
+        multiplied along the paths of the diagram. To model dependence, introduce a variable
+        for the common cause and make the affected components functions of it -- see
+        "Dependent events (common-cause failures)" in the README."""
         return self.node._prob(probability, values)
     
     def prob_interval(self, probability, values):
+        """Interval-arithmetic version of :meth:`prob`.
+
+        Components are assumed **s-independent**: the probability of each variable is
+        multiplied along the paths of the diagram. To model dependence, introduce a variable
+        for the common cause and make the affected components functions of it -- see
+        "Dependent events (common-cause failures)" in the README."""
         interval_probability = {k: [ms.Interval(u[0], u[1]) for u in v] for k, v in probability.items()}
         return self.node._prob_interval(interval_probability, values)
 
@@ -207,6 +219,11 @@ class MddNode:
         of raising the component across the ``j-1 -> j`` state boundary (index ``d`` = the
         transition ``d -> d+1``). For a binary variable this is the single classic Birnbaum
         measure. ``probability`` maps each variable to its per-state probability vector.
+
+        Components are assumed **s-independent** (see :meth:`prob`). Note also that a Birnbaum
+        measure is a derivative ``dR/dp_i``, so it presumes each component's probability can be
+        varied on its own; between genuinely dependent components that premise does not hold,
+        and the result should be read as the importance of the *modelled variables*.
 
         For imprecise (interval-valued) component probabilities use :meth:`bmeas_interval`."""
         return self.node._bmeas(probability, values)
